@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import type en from "../../../i18n/en.json";
+  import { deviceName } from "../../devices/inventory.ts";
   import type { Id, World } from "../../spatial/world.ts";
+  import { badgeSymbols, type DeviceBadge } from "./device-view.ts";
 
   let {
     world,
@@ -8,6 +11,8 @@
     selected,
     hidden,
     visibleIds,
+    management,
+    badges,
     onselect,
     ontoggle,
   }: {
@@ -16,9 +21,13 @@
     selected?: Id;
     hidden: ReadonlySet<Id>;
     visibleIds: ReadonlySet<Id>;
-    onselect: (id: Id) => void;
+    management: boolean;
+    badges: ReadonlyMap<Id, DeviceBadge>;
+    onselect: (id?: Id) => void;
     ontoggle: (id: Id) => void;
   } = $props();
+
+  let collapsed = $state.raw(new Set<Id>());
   const children = $derived.by(() => {
     const index = new Map<Id | null, Id[]>();
     for (const [id, { parent }] of Object.entries(world.nodes)) {
@@ -30,20 +39,93 @@
       siblings.sort((a, b) => (world.nodes[a]?.level ?? 0) - (world.nodes[b]?.level ?? 0));
     return index;
   });
+  const devices = $derived.by(() => {
+    const index = new Map<Id | null, Id[]>();
+    if (management)
+      for (const [id, { mount }] of Object.entries(world.devices)) {
+        const siblings = index.get(mount ?? null) ?? [];
+        siblings.push(id);
+        index.set(mount ?? null, siblings);
+      }
+    return index;
+  });
+
+  function collapse(id: Id) {
+    const next = new Set(collapsed);
+    if (!next.delete(id)) next.add(id);
+    collapsed = next;
+  }
+
+  $effect(() => {
+    if (!selected || !management) return;
+    let parent = world.devices[selected]?.mount ?? world.nodes[selected]?.parent;
+    const ancestors: Id[] = [];
+    while (parent) {
+      ancestors.push(parent);
+      parent = world.nodes[parent]?.parent;
+    }
+    const current = untrack(() => collapsed);
+    if (ancestors.some((id) => current.has(id)))
+      collapsed = new Set([...current].filter((id) => !ancestors.includes(id)));
+  });
 </script>
+
+{#snippet deviceRows(parent: Id | null, depth: number)}
+  {#each devices.get(parent) ?? [] as id (id)}
+    {@const badge = badges.get(id)}
+    <li
+      class="layer-row"
+      class:filtered={!!parent && !visibleIds.has(id)}
+      class:chosen={selected === id}
+      style:--gaia-layer-indent={`${depth * 0.65}rem`}
+    >
+      <button
+        class="layer-select"
+        data-device={id}
+        type="button"
+        aria-pressed={selected === id}
+        onclick={() => onselect(id)}
+        title={`${deviceName(world, id)} · ${badge?.label ?? labels.device}`}
+      >
+        {#if badge}
+          <span class="status-icon" data-device-health={badge.health} aria-label={badge.label}>
+            {badgeSymbols[badge.health]}
+          </span>
+        {/if}
+        <span>{deviceName(world, id)}</span>
+      </button>
+    </li>
+  {/each}
+{/snippet}
 
 {#snippet branch(parent: Id | null, depth: number)}
   <ul>
     {#each children.get(parent) ?? [] as id (id)}
       {@const node = world.nodes[id]!}
-      {@const canToggle = node.kind === "building" || node.kind === "floor"}
+      {@const canToggle =
+        node.kind === "building" ||
+        node.kind === "floor" ||
+        (management && (node.kind === "site" || node.kind === "zone"))}
+      {@const nested = children.has(id) || devices.has(id)}
+      {@const expanded = !management || !collapsed.has(id)}
       <li>
         <div
           class="layer-row"
           class:filtered={!visibleIds.has(id)}
           class:chosen={selected === id}
-          style:--gaia-layer-indent={`${depth * 0.7}rem`}
+          style:--gaia-layer-indent={`${depth * 0.65}rem`}
         >
+          {#if management && nested}
+            <button
+              class="visibility"
+              type="button"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? labels.collapse : labels.expand} ${node.name}`}
+              onclick={() => collapse(id)}
+            >
+              {expanded ? "▾" : "▸"}
+            </button>
+          {/if}
           <button
             class="layer-select"
             data-node={id}
@@ -61,6 +143,7 @@
             <button
               class="visibility"
               type="button"
+              aria-pressed={hidden.has(id)}
               aria-label={`${hidden.has(id) ? labels.show : labels.hide} ${node.name}`}
               title={`${hidden.has(id) ? labels.show : labels.hide} ${node.name}`}
               onclick={() => ontoggle(id)}
@@ -69,14 +152,28 @@
             </button>
           {/if}
         </div>
-        {#if children.has(id)}{@render branch(id, depth + 1)}{/if}
+        {#if nested && expanded}{@render branch(id, depth + 1)}{/if}
       </li>
     {/each}
+    {#if parent !== null}{@render deviceRows(parent, depth)}{/if}
   </ul>
 {/snippet}
 
+{#if management}
+  <button class="inventory-link" type="button" aria-pressed={!selected} onclick={() => onselect()}>
+    {labels.inventory}
+  </button>
+{/if}
+
 {#if children.has(null)}
   {@render branch(null, 0)}
-{:else}
+{:else if !devices.has(null)}
   <p class="muted">{labels.emptyLayers}</p>
+{/if}
+
+{#if devices.has(null)}
+  <section class="reference-list">
+    <h3>{labels.unplacedDevices}</h3>
+    <ul>{@render deviceRows(null, 0)}</ul>
+  </section>
 {/if}

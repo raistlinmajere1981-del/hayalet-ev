@@ -5,7 +5,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { spatialScene } from "../editor/site/scene.ts";
-import { virtualReadings } from "../editor/site/virtual.ts";
 import type { Opened } from "../editor/client.ts";
 import { createSiteFixture } from "../spatial/fixture.ts";
 import { newProject } from "../spatial/project.ts";
@@ -88,23 +87,6 @@ test("deletion requires explicit children and device detachments and rejects sur
   assert.equal(removed.devices["r2"]?.mount, undefined);
   assert.deepEqual(removed.nodes["cable"], world.nodes["cable"]);
   assert.equal(world.devices["r2"]?.mount, "mr2");
-});
-
-test("virtual state keeps only the active subscriber and does not touch the spatial snapshot", () => {
-  const world = createSiteFixture();
-  const before = structuredClone(world);
-  const items = spatialScene(world, new Set(), false);
-  const source = virtualReadings();
-  let updates = 0;
-  const off = source.subscribe(() => updates++);
-  source.update("c2", { state: "online", value: 50, at: 100 });
-  off();
-  source.update("c2", { state: "offline", value: 60, at: 200 });
-  assert.equal(updates, 2);
-  const stopAgain = source.subscribe((readings) => assert.equal(readings.get("c2")?.value, 60));
-  stopAgain();
-  assert.deepEqual(world, before);
-  assert.deepEqual(spatialScene(world, new Set(), false), items);
 });
 
 test("a fixture project name can match a spatial ID without renaming the fixture", async (t) => {

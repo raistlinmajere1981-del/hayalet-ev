@@ -1,3 +1,4 @@
+import { applyDeviceEdit, type DeviceEdit } from "../devices/inventory.ts";
 import {
   fromParent,
   nodeAt,
@@ -25,6 +26,7 @@ type Creation = Pick<SpatialNode, "name" | "parent"> &
   );
 
 export type SiteEdit =
+  | DeviceEdit
   | { op: "add"; id: Id; node: Creation }
   | { op: "bindVirtual"; id: Id; mount: Id }
   | { op: "building"; id: Id; pose: Pose; size: V3 }
@@ -85,7 +87,7 @@ function remove(world: World, ids: Id[], detach: Id[]): void {
 
 function update(
   world: World,
-  edit: Exclude<SiteEdit, { op: "add" | "remove" | "bindVirtual" }>
+  edit: Exclude<SiteEdit, DeviceEdit | { op: "add" | "remove" | "bindVirtual" }>
 ): SpatialNode {
   const node = nodeAt(world, edit.id);
   switch (edit.op) {
@@ -131,10 +133,11 @@ export function applySiteEdits(world: World, edits: readonly SiteEdit[]): World 
     ...Object.keys(world.references),
   ]);
   for (const edit of edits) {
-    if (edit.op === "add" || edit.op === "bindVirtual") {
+    if (edit.op === "add" || edit.op === "bindVirtual" || edit.op === "createDevice") {
       if (reserved.has(edit.id)) throw new Error(`Gaia ID already exists: ${edit.id}`);
       reserved.add(edit.id);
       if (edit.op === "add") candidate.nodes[edit.id] = { ...edit.node };
+      else if (edit.op === "createDevice") applyDeviceEdit(candidate, edit);
       else
         candidate.devices[edit.id] = {
           role: "sensor",
@@ -143,6 +146,8 @@ export function applySiteEdits(world: World, edits: readonly SiteEdit[]): World 
           capabilities: ["temperature.read.v1"],
         };
     } else if (edit.op === "remove") remove(candidate, edit.ids, edit.detach);
+    else if (edit.op === "updateDevice" || edit.op === "mountDevice" || edit.op === "deleteDevice")
+      applyDeviceEdit(candidate, edit);
     else candidate.nodes[edit.id] = update(candidate, edit);
     // Later edits may resolve poses through the new parent chain.
     validateWorld(candidate);

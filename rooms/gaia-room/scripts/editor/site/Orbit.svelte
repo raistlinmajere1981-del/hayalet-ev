@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import type { Id } from "../../spatial/world.ts";
+  import type { DeviceBadge } from "./device-view.ts";
   import type { SpatialItem } from "./scene.ts";
   import type { createOrbit } from "./orbit.ts";
 
@@ -17,7 +18,7 @@
     items: SpatialItem[];
     visible: boolean;
     selected?: Id;
-    states: ReadonlyMap<Id, string>;
+    states: ReadonlyMap<Id, DeviceBadge>;
     focus: { id?: Id };
     label: string;
     onselect: (id?: Id) => void;

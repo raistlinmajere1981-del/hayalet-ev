@@ -8,7 +8,14 @@ interface Host {
 }
 
 export default function activate(api: Host) {
-  for (const command of ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave", "GaiaReference"]) {
+  for (const command of [
+    "GaiaProjects",
+    "GaiaCreate",
+    "GaiaOpen",
+    "GaiaSave",
+    "GaiaReference",
+    "GaiaStatus",
+  ]) {
     api.registerCommand(
       command,
       ({ roomArgs }) => {
@@ -26,9 +33,14 @@ export default function activate(api: Host) {
       api.notifyRoom(
         "gaia-theme",
         Object.fromEntries(
-          ["bg-surface", "text-primary", "border-default", "color-accent", "color-error"].map(
-            (key) => [key, style.getPropertyValue("--" + key).trim()]
-          )
+          [
+            "bg-surface",
+            "text-primary",
+            "border-default",
+            "color-accent",
+            "color-error",
+            "color-warning",
+          ].map((key) => [key, style.getPropertyValue("--" + key).trim()])
         )
       );
     },

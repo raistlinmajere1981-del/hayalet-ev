@@ -3,7 +3,7 @@
   import { yaw360, worldPose, type Id, type V2, type V3, type World } from "../../spatial/world.ts";
   import type { SiteEdit } from "../../spatial/site-edits.ts";
   import { objectMeasurements } from "../../spatial/measurements.ts";
-  import type { VirtualReading } from "./virtual.ts";
+  import { deviceName } from "../../devices/inventory.ts";
 
   let {
     world,
@@ -11,20 +11,14 @@
     labels,
     editable,
     disabled,
-    readings,
-    now,
     onedit,
-    onreading,
   }: {
     world: World;
     id: Id;
     labels: typeof en.site;
     editable: boolean;
     disabled: boolean;
-    readings: ReadonlyMap<Id, VirtualReading>;
-    now: number;
     onedit: (edit: SiteEdit, input: HTMLInputElement) => void;
-    onreading: (id: Id, state: VirtualReading["state"], value: number) => void;
   } = $props();
 
   const node = $derived(world.nodes[id]!);
@@ -74,15 +68,6 @@
     const value = input.valueAsNumber;
     if (Number.isFinite(value)) callback(input, value);
     else input.value = fmt(previous);
-  }
-
-  function publish(event: SubmitEvent, deviceId: string) {
-    event.preventDefault();
-    const values = new FormData(event.currentTarget as HTMLFormElement);
-    const reading = Number(values.get("reading"));
-    const state = values.get("connection");
-    if (Number.isFinite(reading) && (state === "online" || state === "offline"))
-      onreading(deviceId, state, reading);
   }
 </script>
 
@@ -225,53 +210,13 @@
   </details>
 {/if}
 
-{#each devices as [deviceId, device] (deviceId)}
-  {@const reading = readings.get(deviceId)}
-  {@const unit =
-    typeof device.displayUnit === "string"
-      ? device.displayUnit
-      : device.capabilities.includes("temperature.read.v1")
-        ? "°C"
-        : device.capabilities.includes("level.read.v1")
-          ? "m"
-          : ""}
+{#if devices.length}
   <div class="device-card">
-    <h3>{labels.device} · {deviceId}</h3>
-    <p>
-      {device.source === "virtual" ? labels.virtual : labels.physical} · {reading
-        ? labels[reading.state]
-        : device.source === "physical" && !device.hardwareId
-          ? labels.unbound
-          : labels.unknown}
-    </p>
-    {#if reading}
-      <p class="reading">{reading.value} {unit}</p>
-      <p class="muted">
-        {now - reading.at < 60000 ? labels.fresh : labels.stale} ·
-        <time datetime={new Date(reading.at).toISOString()}>
-          {new Date(reading.at).toLocaleTimeString(document.documentElement.lang)}
-        </time>
-      </p>
-    {/if}
-    {#if editable && device.source === "virtual"}
-      <form onsubmit={(event) => publish(event, deviceId)}>
-        <div class="field-row">
-          <select name="connection" aria-label={labels.device} value={reading?.state ?? "online"}>
-            <option value="online">{labels.online}</option><option value="offline">
-              {labels.offline}
-            </option>
-          </select>
-          <input
-            required
-            type="number"
-            step="any"
-            name="reading"
-            aria-label={labels.reading}
-            value={reading?.value ?? 20}
-          />
-        </div>
-        <button type="submit" {disabled}>{labels.publish}</button>
-      </form>
-    {/if}
+    <h3>{labels.devices}</h3>
+    <ul>
+      {#each devices as [deviceId] (deviceId)}
+        <li>{deviceName(world, deviceId)}</li>
+      {/each}
+    </ul>
   </div>
-{/each}
+{/if}

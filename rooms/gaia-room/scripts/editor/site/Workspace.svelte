@@ -15,6 +15,7 @@
     type Id,
     type V2,
     type V3,
+    type SpatialNode,
   } from "../../spatial/world.ts";
   import {
     projectReference,
@@ -24,7 +25,7 @@
   } from "../../spatial/reference.ts";
   import { signedArea } from "../../spatial/measurements.ts";
   import type { ReferenceBatch, ReferenceEdit } from "../../storage/reference-contract.ts";
-  import { UnconfirmedCommand, type Opened, type Saved } from "../client.ts";
+  import { command, UnconfirmedCommand, type Opened, type Saved } from "../client.ts";
   import { referenceImages } from "../reference-images.svelte.ts";
   import { calibrationDraft, calibrationValue, type CalibrationDraft } from "./calibration.ts";
   import CalibrationImage from "./CalibrationImage.svelte";
@@ -34,8 +35,18 @@
   import Orbit from "./Orbit.svelte";
   import Plan from "./Plan.svelte";
   import Properties from "./Properties.svelte";
-  import { spatialScene } from "./scene.ts";
-  import { type VirtualReading, virtualReadings } from "./virtual.ts";
+  import Overview from "./Overview.svelte";
+  import { deviceMarkers, spatialScene } from "./scene.ts";
+  import {
+    activeStatuses,
+    deviceHealth,
+    freshForMs,
+    observationFreshness,
+    type DeviceStatuses,
+  } from "../../devices/status.ts";
+  import { deviceName, mountPath, type DeviceEdit } from "../../devices/inventory.ts";
+  import type { VirtualUpdate } from "../../devices/status.ts";
+  import { healthLabel, type DeviceBadge } from "./device-view.ts";
   import "./workspace.css";
 
   let {
@@ -45,7 +56,7 @@
     visible,
     startEditing,
     initialSelection,
-    readingsSource,
+    locale,
     onsave,
     onreopen,
     oninterior,
@@ -58,7 +69,7 @@
     visible: boolean;
     startEditing: boolean;
     initialSelection?: Id;
-    readingsSource: ReturnType<typeof virtualReadings>;
+    locale: string;
     onsave: (batch: SiteBatch | ReferenceBatch, retry: boolean) => Promise<Saved>;
     onreopen: () => Promise<Opened>;
     oninterior: (id: Id) => Promise<void>;
@@ -67,14 +78,40 @@
   } = $props();
 
   let draft = $state.raw(untrack(() => opened.world));
-  let selected = $state<Id | undefined>(untrack(() => initialSelection));
+  let selected = $state<Id | undefined>(
+    untrack(
+      () =>
+        initialSelection ??
+        Object.keys(opened.world.nodes).find((id) => opened.world.nodes[id]?.kind === "site")
+    )
+  );
   let editable = $state(untrack(() => startEditing));
   let three = $state(false);
   let webgl = $state(true);
   let underground = $state(false);
   let hidden = $state.raw<ReadonlySet<Id>>(new Set());
   let focus = $state.raw<{ id?: Id }>({});
-  let readings = $state.raw<ReadonlyMap<Id, VirtualReading>>(new Map());
+  let receivedStatuses = $state.raw<DeviceStatuses>({});
+  let statusBusy = $state(false);
+  let statusError = $state(false);
+  let statusRequest = 0;
+  let creatingDevice = $state(false);
+  let deviceDeletion = $state.raw<Extract<DeviceEdit, { op: "deleteDevice" }>>();
+  let placingDevice = $state<Id>();
+  let placementFrame = $state<Id>();
+  let revealed = $state(false);
+  type LayerKind = SpatialNode["kind"] | "device";
+  const layerKinds: LayerKind[] = [
+    "site",
+    "building",
+    "floor",
+    "zone",
+    "object",
+    "mount",
+    "route",
+    "device",
+  ];
+  let hiddenKinds = $state.raw<ReadonlySet<LayerKind>>(new Set());
   let now = $state(Date.now());
   let edits = $state.raw<SiteEdit[]>([]);
   let pending = $state.raw<SiteBatch | ReferenceBatch>();
@@ -99,9 +136,23 @@
   });
 
   const dirty = $derived(draft !== opened.world || !!working.length || !!pending);
-  const blocked = $derived(saving || !!pending || !!leave || !!deletion);
-  const items = $derived(spatialScene(draft, hidden, underground));
+  const blocked = $derived(saving || !!pending || !!leave || !!deletion || !!deviceDeletion);
+  const spatialItems = $derived(spatialScene(draft, hidden, underground));
+  const items = $derived(
+    editable
+      ? spatialItems
+      : [
+          ...spatialItems.filter(({ node }) => !hiddenKinds.has(node.kind)),
+          ...(hiddenKinds.has("device") ? [] : deviceMarkers(draft, spatialItems)),
+        ]
+  );
   const visibleIds = $derived(new Set(items.map(({ id }) => id)));
+  const placementAreas = $derived(
+    Object.keys(draft.nodes).filter((id) => {
+      const kind = draft.nodes[id]?.kind;
+      return kind === "site" || kind === "building" || kind === "floor" || kind === "zone";
+    })
+  );
   const selectedNode = $derived(selected ? draft.nodes[selected] : undefined);
   const site = $derived(
     selectedNode && selected
@@ -122,7 +173,7 @@
       ([id, layer]) =>
         (layer.visible !== false || (id === selectedReference && !!calibration?.view)) &&
         (layer.frame === null ||
-          visibleIds.has(layer.frame) ||
+          spatialItems.some(({ id }) => id === layer.frame) ||
           (id === selectedReference && !!calibration)) &&
         !unavailableAssets.has(layer.asset)
     )
@@ -166,40 +217,144 @@
       : [];
   });
 
+  const project = $derived(opened.world.id);
+  const session = $derived(opened.session);
+  const statuses = $derived(activeStatuses(draft, receivedStatuses));
   const states = $derived.by(() => {
-    const result = new Map<Id, string>();
-    for (const [id, device] of Object.entries(draft.devices)) {
-      const reading = readings.get(id);
-      if (device.mount && reading && (reading.state === "online" || !result.has(device.mount)))
-        result.set(device.mount, reading.state);
-    }
+    const result = new Map<Id, DeviceBadge>();
+    if (!editable)
+      for (const [id, device] of Object.entries(draft.devices)) {
+        const health = deviceHealth(device, statuses[id], now);
+        result.set(id, { health, label: healthLabel(labels, health) });
+      }
     return result;
   });
 
   $effect(() => {
-    if (!visible) return;
-    const stop = readingsSource.subscribe((data) => {
-      readings = data;
-      now = Date.now();
-    });
-    return stop;
+    if (!visible || editable) {
+      statusBusy = false;
+      return;
+    }
+    now = Date.now();
+    if (untrack(() => Object.keys(draft.devices).length)) void loadStatus(project, session);
+    return () => {
+      statusRequest++;
+    };
   });
 
   $effect(() => {
-    if (!visible || !selected) return;
-    const timestamps = Object.entries(draft.devices)
-      .filter(([, device]) => device.mount === selected)
-      .flatMap(([id]) => {
-        const reading = readings.get(id);
-        return reading && reading.at + 60000 > now ? [reading.at + 60000] : [];
-      });
-    if (!timestamps.length) return;
-    const timer = setTimeout(
-      () => (now = Date.now()),
-      Math.max(0, Math.min(...timestamps) - Date.now())
-    );
+    if (!visible || editable) return;
+    let next = Infinity;
+    for (const status of Object.values(statuses))
+      for (const observation of Object.values(status.observations))
+        if (observationFreshness(status, observation, now) === "fresh")
+          next = Math.min(next, observation.at + freshForMs);
+    if (!Number.isFinite(next)) return;
+    const timer = setTimeout(() => (now = Date.now()), Math.max(0, next - Date.now()));
     return () => clearTimeout(timer);
   });
+
+  async function loadStatus(project: string, session: string, update?: VirtualUpdate) {
+    const request = ++statusRequest;
+    statusBusy = true;
+    statusError = false;
+    try {
+      const result = await command<{ statuses: DeviceStatuses }>("GaiaStatus", {
+        project,
+        session,
+        ...(update ? { update } : {}),
+      });
+      if (request === statusRequest && visible && !disposed) {
+        receivedStatuses = result.statuses ?? {};
+        now = Date.now();
+      }
+    } catch {
+      if (request === statusRequest && visible && !disposed) statusError = true;
+    } finally {
+      if (request === statusRequest) statusBusy = false;
+    }
+  }
+
+  async function publish(update: VirtualUpdate) {
+    if (!visible || editable || blocked || statusBusy) return;
+    await loadStatus(opened.world.id, opened.session, update);
+  }
+
+  function manage(edits: SiteEdit[]) {
+    if (blocked || editable) return Promise.resolve(false);
+    return persist({ scope: "site", ...batchContext(), edits }, false);
+  }
+
+  function postManagement(changes: SiteEdit[]) {
+    for (const edit of changes) {
+      if (edit.op === "createDevice") {
+        creatingDevice = false;
+        selected = edit.id;
+      } else if (edit.op === "deleteDevice" && selected === edit.id) selected = undefined;
+      else if (edit.op === "mountDevice" && edit.mount && placingDevice === edit.id) {
+        placingDevice = undefined;
+        focusSelection(edit.id);
+      }
+    }
+  }
+
+  function toggleKind(kind: LayerKind) {
+    const next = new Set(hiddenKinds);
+    if (!next.delete(kind)) next.add(kind);
+    hiddenKinds = next;
+    revealed = false;
+  }
+
+  function focusSelection(id: Id) {
+    revealed = !visibleIds.has(id);
+    if (revealed) {
+      const mount = draft.devices[id]?.mount;
+      const node = mount ?? id;
+      const next = new Set(hidden);
+      for (let cursor: Id | null = node; cursor; cursor = draft.nodes[cursor]?.parent ?? null)
+        next.delete(cursor);
+      hidden = next;
+      const kinds = new Set(hiddenKinds);
+      const kind = mount ? "device" : draft.nodes[id]?.kind;
+      if (kind) kinds.delete(kind);
+      hiddenKinds = kinds;
+      if (!spatialScene(draft, next, underground).some((item) => item.id === node))
+        underground = true;
+    }
+    focus = { id };
+  }
+
+  function startDevicePlacement(id: Id) {
+    if (blocked || !placementAreas.length) return;
+    const mount = draft.devices[id]?.mount;
+    placementFrame = (mount ? draft.nodes[mount]?.parent : undefined) ?? site ?? placementAreas[0];
+    placingDevice = id;
+    three = false;
+    measuring = false;
+    referencePanel = false;
+  }
+
+  function placeDevice(point: V3) {
+    if (!placingDevice || !placementFrame) return;
+    const parent = worldPose(draft, placementFrame);
+    const p = rounded(fromParent(parent, [point[0], point[1], parent.p[2]]));
+    const mount = crypto.randomUUID();
+    void manage([
+      {
+        op: "add",
+        id: mount,
+        node: {
+          parent: placementFrame,
+          name: name("mount"),
+          p,
+          yaw: 0,
+          kind: "mount",
+          geometry: { kind: "point" },
+        },
+      },
+      { op: "mountDevice", id: placingDevice, mount },
+    ]);
+  }
 
   function commit(changes: SiteEdit[]) {
     if (blocked) return false;
@@ -401,6 +556,7 @@
       draft = saved.world;
       edits = [];
       pending = undefined;
+      if (batch.scope === "site" && !editable) postManagement(batch.edits);
       if (batch.scope === "reference") {
         calibration = undefined;
         selectedReference = batch.edit.op === "remove" ? undefined : batch.edit.id;
@@ -428,6 +584,8 @@
     resetTool();
     calibration = undefined;
     measuring = false;
+    placingDevice = undefined;
+    creatingDevice = false;
     leave = undefined;
     try {
       await action();
@@ -463,6 +621,7 @@
   function mode(value: boolean) {
     if (editable === value) return;
     request(() => {
+      if (value && selected && draft.devices[selected]) selected = draft.devices[selected]?.mount;
       editable = value;
       three = false;
     });
@@ -476,11 +635,15 @@
     const next = new Set(hidden);
     if (!next.delete(id)) next.add(id);
     hidden = next;
+    revealed = false;
   }
 
   function pick(id?: Id) {
     if (tool || blocked) return;
     selected = id;
+    revealed = false;
+    placingDevice = undefined;
+    creatingDevice = false;
     referencePanel = false;
     calibration = undefined;
     measuring = false;
@@ -543,6 +706,10 @@
 
   function placeOnPlan(point: V3, hit?: Id) {
     if (blocked) return;
+    if (placingDevice) {
+      placeDevice(point);
+      return;
+    }
     if (calibration?.view === "anchor" && reference) {
       const pose = referenceFrame(draft, reference.frame);
       const [x, y] = rounded(fromParent(pose, point));
@@ -551,9 +718,11 @@
       return;
     }
     if (measuring) {
-      const mount = hit && draft.nodes[hit]?.kind === "mount";
+      const mount = hit
+        ? (draft.devices[hit]?.mount ?? (draft.nodes[hit]?.kind === "mount" ? hit : undefined))
+        : undefined;
       if (!mount && measurementZ === undefined) return;
-      const value: V3 = mount ? worldPose(draft, hit).p : [point[0], point[1], measurementZ!];
+      const value: V3 = mount ? worldPose(draft, mount).p : [point[0], point[1], measurementZ!];
       measurement =
         measurementMode === "points" && measurement.length === 2
           ? [value]
@@ -561,10 +730,6 @@
       return;
     }
     place(point);
-  }
-
-  function publish(id: Id, state: VirtualReading["state"], value: number) {
-    if (visible && editable) readingsSource.update(id, { state, value, at: Date.now() });
   }
 
   async function interior(id: Id) {
@@ -616,6 +781,22 @@
         >
           {storageLabels.save}
         </button>
+      {:else if pending}
+        <button type="button" class="primary" disabled={saving} onclick={save}>
+          {storageLabels.save}
+        </button>
+      {:else}
+        <button
+          type="button"
+          class="primary"
+          disabled={blocked}
+          onclick={() => {
+            pick();
+            creatingDevice = true;
+          }}
+        >
+          {labels.addDevice}
+        </button>
       {/if}
       <button
         type="button"
@@ -638,6 +819,8 @@
         {selected}
         {hidden}
         {visibleIds}
+        management={!editable}
+        badges={states}
         onselect={pick}
         ontoggle={toggle}
       />
@@ -677,7 +860,7 @@
             <button
               type="button"
               aria-pressed={three}
-              disabled={!webgl || !items.length}
+              disabled={!webgl || !items.length || !!placingDevice}
               onclick={() => {
                 three = true;
                 measuring = false;
@@ -688,9 +871,13 @@
             </button>
           </div>
         {/if}
-        <button type="button" disabled={calibration?.view === "pixels"} onclick={() => (focus = {})}
-          >{labels.fit}</button
+        <button
+          type="button"
+          disabled={calibration?.view === "pixels"}
+          onclick={() => (focus = {})}
         >
+          {labels.fit}
+        </button>
         {#if editable}
           <button
             type="button"
@@ -701,15 +888,37 @@
                 referencePanel = false;
                 calibration = undefined;
               } else openReference(selectedReference ?? Object.keys(draft.references)[0]);
-            }}>{labels.references}</button
+            }}
           >
+            {labels.references}
+          </button>
         {/if}
-        <button
-          type="button"
-          aria-pressed={measuring}
-          disabled={blocked || !!tool}
-          onclick={measure}>{labels.measure}</button
-        >
+        {#if editable || !three}<button
+            type="button"
+            class:secondary-tool={!editable}
+            aria-pressed={measuring}
+            disabled={blocked || !!tool || !!placingDevice}
+            onclick={measure}
+          >
+            {labels.measure}
+          </button>{/if}
+        {#if !editable}
+          <details class="visibility-menu">
+            <summary>{labels.filters}</summary>
+            <div>
+              {#each layerKinds as kind (kind)}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!hiddenKinds.has(kind)}
+                    onchange={() => toggleKind(kind)}
+                  />
+                  {kind === "device" ? labels.devices : labels[kind]}
+                </label>
+              {/each}
+            </div>
+          </details>
+        {/if}
         <label class="check">
           <input type="checkbox" bind:checked={underground} />{labels.underground}
         </label>
@@ -778,7 +987,23 @@
         </div>
       {/if}
 
-      <div class="map-viewport" data-geometry={items.length}>
+      {#if placingDevice}
+        <div class="edit-toolbar">
+          <label class="placement-area">
+            {labels.placementFrame}
+            <select bind:value={placementFrame} disabled={blocked}>
+              {#each placementAreas as id (id)}<option value={id}>
+                  {mountPath(draft, id).join(" / ")}
+                </option>{/each}
+            </select>
+          </label>
+          <button type="button" disabled={blocked} onclick={() => (placingDevice = undefined)}>
+            {labels.cancel}
+          </button>
+          <p>{labels.placeDeviceHint}</p>
+        </div>
+      {/if}
+      <div class="map-viewport" data-geometry={spatialItems.length}>
         {#if three}
           <Orbit
             {items}
@@ -816,7 +1041,7 @@
             referenceLayers={planLayers}
             {calibrationGuide}
             editable={editable && !blocked && !referencePanel}
-            placement={!!tool || measuring || calibration?.view === "anchor"}
+            placement={!!tool || measuring || !!placingDevice || calibration?.view === "anchor"}
             label={labels.overviewPlan}
             onselect={pick}
             onplace={placeOnPlan}
@@ -824,18 +1049,21 @@
             oncorner={moveCorner}
           />
         {/if}
-        {#if visible && !items.length && !planLayers.length && !editable}<p class="map-empty">
+        {#if visible && !Object.keys(draft.nodes).length && !planLayers.length && !editable}<p
+            class="map-empty"
+          >
             {labels.noSite}
           </p>{/if}
       </div>
       <footer class="map-status">
         {#if error}<span role="alert">{error}</span>
         {:else if !webgl && !editable}<span role="status">{labels.webgl}</span>
+        {:else if revealed}<span role="status">{labels.revealedSelection}</span>
         {:else if calibration?.view === "anchor"}<span>{labels.refAnchorHint}</span>
         {:else if opened.missing.length}<span>{labels.missing} · {opened.missing.join(", ")}</span>
-        {:else if opened.damaged?.length}<span
-            >{labels.refDamaged} · {opened.damaged.join(", ")}</span
-          >
+        {:else if opened.damaged?.length}<span>
+            {labels.refDamaged} · {opened.damaged.join(", ")}
+          </span>
         {:else}
           <span>
             {three
@@ -851,7 +1079,15 @@
     </section>
 
     <aside class="properties-panel" aria-label={labels.inspector}>
-      <h2>{referencePanel ? labels.references : measuring ? labels.measure : labels.inspector}</h2>
+      <h2>
+        {referencePanel
+          ? labels.references
+          : measuring
+            ? labels.measure
+            : editable
+              ? labels.inspector
+              : labels.management}
+      </h2>
       {#if referencePanel}
         {#key (selectedReference ?? "") + ":" + draft.revision}
           <References
@@ -893,6 +1129,29 @@
           onundo={() => (measurement = measurement.slice(0, -1))}
           onclear={() => (measurement = [])}
         />
+      {:else if !editable}
+        {#key selected}
+          <Overview
+            world={draft}
+            {selected}
+            {labels}
+            {locale}
+            {statuses}
+            {now}
+            disabled={blocked || !!placingDevice}
+            {statusBusy}
+            {statusError}
+            {visibleIds}
+            creating={creatingDevice}
+            oncancel={() => (creatingDevice = false)}
+            onapply={(edit) => manage([edit])}
+            onselect={pick}
+            onfocus={focusSelection}
+            onplace={startDevicePlacement}
+            ondelete={(edit) => (deviceDeletion = edit)}
+            onpublish={publish}
+          />
+        {/key}
       {:else if selected && selectedNode}
         {#key selected}
           <Properties
@@ -901,10 +1160,7 @@
             {labels}
             {editable}
             disabled={blocked}
-            {readings}
-            {now}
             onedit={edit}
-            onreading={publish}
           />
         {/key}
         <div class="property-actions">
@@ -936,13 +1192,17 @@
     </aside>
   </div>
 
-  {#if visible && (leave || deletion)}
+  {#if visible && (leave || deletion || deviceDeletion)}
     <div class="dialog-overlay">
       <div
         class="workspace-dialog"
         role="dialog"
         aria-modal="true"
-        aria-label={leave ? labels.leavePrompt : labels.removeItems}
+        aria-label={leave
+          ? labels.leavePrompt
+          : deviceDeletion
+            ? labels.deleteDevicePrompt
+            : labels.removeItems}
       >
         {#if leave}
           <h2>{labels.leavePrompt}</h2>
@@ -962,6 +1222,29 @@
               onclick={() => resolveLeave(true)}
             >
               {storageLabels.save}
+            </button>
+          </div>
+        {:else if deviceDeletion}
+          {@const edit = deviceDeletion}
+          <h2>{labels.deleteDevicePrompt}</h2>
+          <p>{deviceName(draft, edit.id)}</p>
+          {#if edit.mount}<p>{labels.keptMount} {mountPath(draft, edit.mount).join(" / ")}</p>{/if}
+          {#if edit.hardwareId}<p>{labels.removedBinding} · {edit.hardwareId}</p>{/if}
+          {#if statuses[edit.id]}<p>{labels.removedStatus}</p>{/if}
+          <div>
+            <button type="button" onclick={() => (deviceDeletion = undefined)}>
+              {labels.cancel}
+            </button>
+            <button
+              type="button"
+              class="danger"
+              onclick={() => {
+                const target = deviceDeletion;
+                deviceDeletion = undefined;
+                if (target) void manage([target]);
+              }}
+            >
+              {labels.deleteDevice}
             </button>
           </div>
         {:else if deletion}

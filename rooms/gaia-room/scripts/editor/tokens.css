@@ -6,6 +6,7 @@
   --gaia-border-default: #98a6b3;
   --gaia-color-accent: #166c69;
   --gaia-color-error: #a53544;
+  --gaia-color-warning: #996426;
   --gaia-primary: #176863;
   --gaia-primary-hover: #10534f;
   --gaia-on-primary: #fff;
@@ -25,7 +26,7 @@
   --gaia-font-sm: 12px;
   --gaia-font-base: 13px;
   --gaia-font-title: 17px;
-  --gaia-font-reading: 18px;
+  --gaia-status-icon-width: 1em;
   --gaia-font-close: 19px;
   --gaia-panel-padding: 14px;
   --gaia-toolbar-padding: 8px;

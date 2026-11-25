@@ -1,3 +1,4 @@
+import { capabilityId, deviceRoles, type DeviceRole } from "../devices/capabilities.ts";
 import { fields, record, segment, uuid } from "./batch.ts";
 import { applySiteEdits, type SiteBatch } from "../spatial/site-edits.ts";
 import { validateWorld, type World } from "../spatial/world.ts";
@@ -5,6 +6,33 @@ import { validateWorld, type World } from "../spatial/world.ts";
 function ids(value: unknown) {
   if (!Array.isArray(value)) throw new Error("Invalid Gaia IDs");
   for (const id of value) segment(id);
+}
+
+function deviceDetails(input: unknown) {
+  if (!record(input)) throw new Error("Invalid Gaia device details");
+  fields(input, [
+    "name",
+    "roles",
+    "capabilities",
+    ...["manufacturer", "model"].filter((key) => Object.hasOwn(input, key)),
+  ]);
+  for (const key of ["name", "manufacturer", "model"]) {
+    if (!Object.hasOwn(input, key)) continue;
+    const value = input[key];
+    if (typeof value !== "string" || !value.trim() || value.length > 100)
+      throw new Error("Invalid Gaia device information");
+  }
+  const { roles, capabilities } = input;
+  if (
+    !Array.isArray(roles) ||
+    !roles.length ||
+    !roles.every((role: DeviceRole) => deviceRoles.includes(role)) ||
+    new Set(roles).size !== roles.length ||
+    !Array.isArray(capabilities) ||
+    !capabilities.every(capabilityId) ||
+    new Set(capabilities).size !== capabilities.length
+  )
+    throw new Error("Invalid Gaia device roles or capabilities");
 }
 
 export function parseSiteBatch(input: unknown): SiteBatch {
@@ -62,6 +90,27 @@ export function parseSiteBatch(input: unknown): SiteBatch {
         }
         break;
       }
+      case "createDevice":
+        fields(edit, ["op", "id", "source", "details"]);
+        uuid(edit["id"]);
+        if (edit["source"] !== "virtual" && edit["source"] !== "physical")
+          throw new Error("Invalid Gaia device source");
+        deviceDetails(edit["details"]);
+        break;
+      case "updateDevice":
+        fields(edit, ["op", "id", "details"]);
+        deviceDetails(edit["details"]);
+        break;
+      case "mountDevice":
+        fields(edit, ["op", "id", "mount"]);
+        if (edit["mount"] !== null) segment(edit["mount"]);
+        break;
+      case "deleteDevice":
+        fields(edit, ["op", "id", "mount", "hardwareId"]);
+        if (edit["mount"] !== null) segment(edit["mount"]);
+        if (edit["hardwareId"] !== null && typeof edit["hardwareId"] !== "string")
+          throw new Error("Invalid Gaia hardware binding");
+        break;
       case "bindVirtual":
         fields(edit, ["op", "id", "mount"]);
         uuid(edit["id"]);

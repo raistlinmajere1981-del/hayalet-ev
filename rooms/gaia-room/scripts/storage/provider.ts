@@ -6,6 +6,7 @@ import { newProject, referencePng } from "../spatial/project.ts";
 import { applyTrusted, fields, parseBatch, segment, uuid } from "./batch.ts";
 import { gridPng } from "./fixture-image.ts";
 import { applyTrustedSite, parseSiteBatch } from "./site-batch.ts";
+import { parseVirtualUpdate, projectStatuses } from "./status-store.ts";
 import { directory, hasCode, publish, readRegular, serialized } from "./files.ts";
 import { assetIssues, readAsset, type DecodeRaster } from "./images.ts";
 import {
@@ -32,7 +33,14 @@ const sessions = new WeakMap<
   object,
   { project: string; building: string | null; revision: number; id: string }
 >();
-const commands = ["GaiaProjects", "GaiaCreate", "GaiaOpen", "GaiaSave", "GaiaReference"];
+const commands = [
+  "GaiaProjects",
+  "GaiaCreate",
+  "GaiaOpen",
+  "GaiaSave",
+  "GaiaReference",
+  "GaiaStatus",
+];
 
 // Key order has no meaning in a room command. Array order is part of its content.
 function canonical(value: unknown): unknown {
@@ -90,6 +98,24 @@ export async function projectCommand(
       })
     );
     return { projects: published.flat().sort() };
+  }
+  if (command === "GaiaStatus") {
+    const hasUpdate = !!request && typeof request === "object" && Object.hasOwn(request, "update");
+    fields(request, hasUpdate ? ["project", "session", "update"] : ["project", "session"]);
+    const { project, session } = request;
+    segment(project);
+    uuid(session);
+    const update = hasUpdate ? parseVirtualUpdate(request["update"]) : undefined;
+    const dir = await directory(projects, project, false);
+    return serialized(dir, async () => {
+      const active = sessions.get(owner);
+      if (active?.id !== session || active.project !== project)
+        throw new Error("Gaia status session mismatch");
+      const { world } = await readDocument(join(dir, "world.json"), project);
+      return {
+        statuses: await projectStatuses(dir, world, update && { ...update, source: "simulated" }),
+      };
+    });
   }
   const save = command === "GaiaSave",
     create = command === "GaiaCreate";

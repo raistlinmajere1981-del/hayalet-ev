@@ -266,15 +266,6 @@
 .gaia-workspace .device-card h3 {
   font-weight: 650;
 }
-.gaia-workspace .device-card .reading {
-  font-size: var(--gaia-font-reading);
-  font-weight: 650;
-}
-.gaia-workspace .device-card form {
-  margin-top: var(--gaia-space-11);
-  display: grid;
-  gap: var(--gaia-space-8);
-}
 .gaia-workspace .dialog-overlay {
   position: fixed;
   inset: 0;
@@ -304,7 +295,7 @@
 @media (--gaia-compact) {
   .gaia-workspace .workspace-body {
     grid-template-columns: minmax(0, 1fr) minmax(var(--gaia-compact-properties-min), 31%);
-    grid-template-rows: minmax(0, 1fr) var(--gaia-compact-layers-height);
+    grid-template-rows: minmax(0, 1fr) min(var(--gaia-compact-layers-height), 32%);
   }
   .gaia-workspace .layer-panel {
     grid-row: 2;
@@ -314,4 +305,218 @@
   .gaia-workspace .project-actions small {
     display: none;
   }
+}
+
+.gaia-workspace :is(.properties-panel, .map-status, .workspace-dialog) {
+  overflow-wrap: anywhere;
+}
+.gaia-workspace .project-context {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gaia-workspace .layer-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.gaia-workspace button.inventory-link {
+  width: 100%;
+  text-align: left;
+  margin-bottom: var(--gaia-space-9);
+}
+.gaia-workspace .visibility-menu {
+  position: relative;
+}
+.gaia-workspace .visibility-menu summary {
+  cursor: pointer;
+}
+.gaia-workspace .visibility-menu > div {
+  display: grid;
+  gap: var(--gaia-space-5);
+  position: absolute;
+  z-index: 3;
+  min-width: max-content;
+  padding: var(--gaia-space-11);
+  margin-top: var(--gaia-space-4);
+  border: var(--gaia-border-width) solid var(--line);
+  border-radius: var(--gaia-radius-sm);
+  background: var(--panel);
+}
+.gaia-workspace .visibility-menu label,
+.gaia-workspace .management-checks label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gaia-space-5);
+}
+.gaia-workspace .secondary-tool {
+  font-size: var(--gaia-font-sm);
+}
+.gaia-workspace [data-device-health] {
+  --device-color: var(--muted);
+}
+.gaia-workspace [data-device-health="online"] {
+  --device-color: var(--accent);
+}
+.gaia-workspace :is([data-device-health="offline"], [data-device-health="invalid"]) {
+  --device-color: var(--gaia-color-error);
+}
+.gaia-workspace :is([data-device-health="stale"], [data-device-health="noData"]) {
+  --device-color: var(--gaia-color-warning);
+}
+.gaia-workspace .status-icon {
+  color: var(--device-color);
+  font-weight: 750;
+  min-width: var(--gaia-status-icon-width);
+  text-align: center;
+}
+.gaia-workspace .status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gaia-space-3);
+}
+.gaia-workspace .device-pin {
+  fill: var(--panel);
+  stroke: var(--device-color);
+}
+.gaia-workspace .device-pin.active {
+  stroke: var(--accent);
+}
+.gaia-workspace .device-glyph {
+  fill: var(--device-color);
+  font-weight: 750;
+}
+.gaia-workspace .orbit-badges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.gaia-workspace .orbit-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  color: var(--device-color);
+  border-color: var(--device-color);
+  border-radius: 50%;
+  width: var(--gaia-space-17);
+  height: var(--gaia-space-17);
+  padding: 0;
+  line-height: 1;
+  font-weight: 750;
+}
+.gaia-workspace .orbit-badge[aria-pressed="true"] {
+  outline: var(--gaia-focus-width) solid var(--accent);
+}
+.gaia-workspace .management-section,
+.gaia-workspace .virtual-input {
+  border-top: var(--gaia-border-width) solid var(--line);
+  padding-top: var(--gaia-space-10);
+  margin-top: var(--gaia-space-13);
+}
+.gaia-workspace :is(.management-section, .virtual-input) summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.gaia-workspace :is(.management-section, .device-form) h3 {
+  margin: 0 0 var(--gaia-space-7);
+  font-size: var(--gaia-font-base);
+}
+.gaia-workspace .management-facts {
+  margin: var(--gaia-space-11) 0;
+}
+.gaia-workspace .scope-counts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gaia-space-8) var(--gaia-space-10);
+}
+.gaia-workspace .scope-counts dd {
+  text-align: end;
+  margin: 0;
+  font-weight: 650;
+}
+.gaia-workspace :is(.status-summary, .scope-devices, .observation-list) {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gaia-workspace .status-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gaia-space-5);
+}
+.gaia-workspace .status-summary li {
+  border-radius: var(--gaia-radius-sm);
+  background: var(--wash);
+  padding: var(--gaia-space-3) var(--gaia-space-6);
+}
+.gaia-workspace .scope-devices > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--gaia-space-4);
+  border-bottom: var(--gaia-border-width) solid var(--line);
+  padding: var(--gaia-space-4) 0;
+}
+.gaia-workspace .scope-devices > li > :is(small, ul) {
+  grid-column: 1 / -1;
+}
+.gaia-workspace button.device-link {
+  text-align: left;
+  border-color: transparent;
+  color: var(--accent);
+  white-space: normal;
+  padding-inline: 0;
+}
+.gaia-workspace .observation-list li {
+  padding: var(--gaia-space-5) 0;
+}
+.gaia-workspace .observation-title {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--gaia-space-3);
+}
+.gaia-workspace .observation-list [data-freshness="stale"] .reading,
+.gaia-workspace .observation-list small {
+  color: var(--muted);
+}
+.gaia-workspace .observation-list [data-quality="invalid"] small strong {
+  color: var(--gaia-color-error);
+}
+.gaia-workspace .device-id {
+  font-family: monospace;
+  font-size: var(--gaia-font-compact);
+}
+.gaia-workspace :is(.device-form, .device-form fieldset, .virtual-input form, .management-checks) {
+  min-width: 0;
+  display: grid;
+  gap: var(--gaia-space-7);
+}
+.gaia-workspace .device-form fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.gaia-workspace
+  :is(.device-form, .virtual-input)
+  label:has(> :is(input:not([type="checkbox"]), select)) {
+  display: grid;
+  gap: var(--gaia-space-3);
+  min-width: 0;
+}
+.gaia-workspace
+  :is(.device-form, .virtual-input, .placement-area)
+  :is(input:not([type="checkbox"]), select) {
+  min-width: 0;
+  max-width: 100%;
+}
+.gaia-workspace .virtual-input form {
+  margin-top: var(--gaia-space-11);
+}
+.gaia-workspace .property-actions button,
+.gaia-workspace :is(.device-form, .virtual-input) button {
+  white-space: normal;
+}
+.gaia-workspace .placement-area {
+  max-width: 100%;
 }

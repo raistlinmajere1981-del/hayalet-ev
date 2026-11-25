@@ -1,9 +1,17 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import type { Id, V2, V3 } from "../../spatial/world.ts";
-  import { boundsOf, boxRing, deviceColor, frame, type Bounds, type SpatialItem } from "./scene.ts";
+  import {
+    boundsOf,
+    boxRing,
+    deviceOffset,
+    frame,
+    type Bounds,
+    type SpatialItem,
+  } from "./scene.ts";
   import { referencePoint, type ReferenceProjection } from "../../spatial/reference.ts";
   import { cssColor, selectedPlan } from "../palette.ts";
+  import { badgeSymbols, type DeviceBadge } from "./device-view.ts";
 
   let {
     items,
@@ -23,7 +31,7 @@
   }: {
     items: SpatialItem[];
     selected?: Id;
-    states: ReadonlyMap<Id, string>;
+    states: ReadonlyMap<Id, DeviceBadge>;
     label: string;
     focus: { id?: Id };
     editable: boolean;
@@ -240,19 +248,40 @@
   {#each items as item (item.id)}
     {@const { id, shape, pose, node } = item}
     {@const active = id === selected}
-    {@const color = cssColor(
-      active ? selectedPlan : node.kind === "mount" ? deviceColor(states.get(id)) : item.color
-    )}
+    {@const color = cssColor(active ? selectedPlan : item.color)}
+    {@const badge = states.get(id)}
     {@const moving = gesture?.mode === "move" && gesture.id === id && gesture.corner === undefined}
     <g
       data-gaia-id={id}
-      data-kind={node.kind}
+      data-kind={item.device ? "device" : node.kind}
+      data-device-health={item.device ? badge?.health : undefined}
       data-below={item.below}
       style:color
       transform={moving ? `translate(${delta[0]} ${-delta[1]})` : undefined}
     >
-      <title>{node.name}</title>
-      {#if shape.kind === "area" || shape.kind === "box"}
+      <title>{item.device && badge ? `${node.name} · ${badge.label}` : node.name}</title>
+      {#if item.device && badge}
+        {@const x = pose.p[0] + deviceOffset(item.device) * unit}
+        <circle
+          class="device-pin"
+          cx={x}
+          cy={-pose.p[1]}
+          r={10 * unit}
+          stroke-width={(active ? 2.8 : 1.4) * unit}
+          class:active
+        />
+        <text
+          class="device-glyph"
+          {x}
+          y={-pose.p[1]}
+          dominant-baseline="central"
+          text-anchor="middle"
+          font-size={13 * unit}
+          pointer-events="none"
+        >
+          {badgeSymbols[badge.health]}
+        </text>
+      {:else if shape.kind === "area" || shape.kind === "box"}
         <polygon
           points={polygon(shape.kind === "area" ? shape.ring : boxRing(pose, shape.size))}
           fill="currentColor"

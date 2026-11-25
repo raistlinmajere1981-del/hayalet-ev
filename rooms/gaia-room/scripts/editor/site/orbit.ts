@@ -24,8 +24,9 @@ import {
 } from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Id } from "../../spatial/world.ts";
-import { deviceColor, frame, type SpatialItem } from "./scene.ts";
+import { deviceOffset, frame, type SpatialItem } from "./scene.ts";
 import { selectedOrbit } from "../palette.ts";
+import { badgeSymbols, type DeviceBadge } from "./device-view.ts";
 
 export function createOrbit(
   host: HTMLElement,
@@ -53,13 +54,36 @@ export function createOrbit(
   const meshes = new Map<Id, Group>();
   let items: SpatialItem[] = [];
   let selected: Id | undefined;
-  let states: ReadonlyMap<Id, string> = new Map();
+  let states: ReadonlyMap<Id, DeviceBadge> = new Map();
+  const badges = new Map<Id, { element: HTMLButtonElement; position: Vector3; offset: number }>();
+  const badgeLayer = document.createElement("div");
+  badgeLayer.className = "orbit-badges";
+  badgeLayer.hidden = true;
+
+  function positionBadges() {
+    const projection = new Vector3();
+    for (const { element, position, offset } of badges.values()) {
+      projection.copy(position).project(camera);
+      const x = ((projection.x + 1) * host.clientWidth) / 2 + offset;
+      const y = ((1 - projection.y) * host.clientHeight) / 2;
+      element.hidden =
+        projection.z < -1 ||
+        projection.z > 1 ||
+        x < 0 ||
+        y < 0 ||
+        x > host.clientWidth ||
+        y > host.clientHeight;
+      element.style.left = x + "px";
+      element.style.top = y + "px";
+    }
+  }
 
   function invalidate() {
     if (!active || request) return;
     request = requestAnimationFrame(() => {
       request = 0;
       renderer.render(scene, camera);
+      positionBadges();
     });
   }
 
@@ -99,32 +123,50 @@ export function createOrbit(
     });
     objects.clear();
     meshes.clear();
+    badgeLayer.replaceChildren();
+    badges.clear();
   }
 
-  function appearance() {
-    for (const item of items) {
-      const group = meshes.get(item.id);
-      const highlight = item.id === selected;
-      const color = new Color(
-        highlight
-          ? selectedOrbit
-          : item.node.kind === "mount"
-            ? deviceColor(states.get(item.id))
-            : item.color
-      );
-      group?.traverse((object) => {
-        if (object instanceof Mesh || object instanceof LineSegments)
-          object.material.color.set(color);
-      });
-    }
-    invalidate();
+  function paintSelection(id?: Id) {
+    const item = id ? items.find((entry) => entry.id === id) : undefined;
+    if (!item) return;
+    const color = new Color(id === selected ? selectedOrbit : item.color);
+    meshes.get(item.id)?.traverse((object) => {
+      if (object instanceof Mesh || object instanceof LineSegments)
+        object.material.color.set(color);
+    });
+  }
+
+  function paintBadge(id: Id) {
+    const badge = badges.get(id);
+    const state = states.get(id);
+    if (!badge || !state) return;
+    const { element } = badge;
+    element.dataset["deviceHealth"] = state.health;
+    element.setAttribute("aria-pressed", String(id === selected));
+    element.title = `${element.dataset["deviceName"]} · ${state.label}`;
+    element.setAttribute("aria-label", element.title);
+    element.textContent = badgeSymbols[state.health];
   }
 
   function replace(next: SpatialItem[]) {
     clear();
     items = next;
     for (const item of next) {
-      const { id, shape, pose, node } = item;
+      const { id, shape, pose, node, device } = item;
+      if (device) {
+        const element = document.createElement("button");
+        element.type = "button";
+        element.className = "orbit-badge";
+        element.dataset["gaiaDevice"] = id;
+        element.dataset["deviceName"] = node.name;
+        element.hidden = true;
+        element.addEventListener("click", () => select(id));
+        badges.set(id, { element, position: new Vector3(...pose.p), offset: deviceOffset(device) });
+        badgeLayer.append(element);
+        paintBadge(id);
+        continue;
+      }
       const group = new Group();
       group.userData["gaiaId"] = id;
       meshes.set(id, group);
@@ -195,8 +237,9 @@ export function createOrbit(
             )
           );
       }
+      paintSelection(id);
     }
-    appearance();
+    invalidate();
   }
 
   let down: Vector2 | undefined;
@@ -231,7 +274,7 @@ export function createOrbit(
 
   canvas.setAttribute("aria-label", host.getAttribute("aria-label") ?? "");
   canvas.hidden = true;
-  host.append(canvas);
+  host.append(canvas, badgeLayer);
   const observer = new ResizeObserver(resize);
   canvas.addEventListener("webglcontextlost", unavailable);
 
@@ -239,6 +282,7 @@ export function createOrbit(
     if (value === active) return;
     active = value;
     canvas.hidden = !active;
+    badgeLayer.hidden = !active;
     if (active) {
       controls.connect(canvas);
       controls.addEventListener("change", invalidate);
@@ -262,10 +306,26 @@ export function createOrbit(
     replace,
     focus,
     setActive,
-    update(id: Id | undefined, nextStates: ReadonlyMap<Id, string>) {
+    update(id: Id | undefined, nextStates: ReadonlyMap<Id, DeviceBadge>) {
+      const previous = selected;
+      const previousStates = states;
       selected = id;
       states = nextStates;
-      appearance();
+      if (previous !== id) {
+        paintSelection(previous);
+        paintSelection(id);
+        if (meshes.has(previous ?? "") || meshes.has(id ?? "")) invalidate();
+      }
+      for (const markerId of badges.keys()) {
+        const old = previousStates.get(markerId);
+        const next = nextStates.get(markerId);
+        if (
+          old?.health !== next?.health ||
+          old?.label !== next?.label ||
+          (previous !== id && (markerId === previous || markerId === id))
+        )
+          paintBadge(markerId);
+      }
     },
     dispose() {
       setActive(false);
@@ -274,6 +334,7 @@ export function createOrbit(
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
+      badgeLayer.remove();
     },
   };
 }

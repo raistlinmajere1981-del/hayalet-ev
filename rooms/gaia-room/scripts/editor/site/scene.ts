@@ -1,3 +1,4 @@
+import { deviceName } from "../../devices/inventory.ts";
 import {
   nodeAt,
   siteOf,
@@ -30,6 +31,8 @@ export interface SpatialItem {
   color: number;
   below: boolean;
   ground: number;
+  ancestors: Id[];
+  device?: { index: number; count: number };
 }
 
 function clip(a: V3, b: V3, ground: number): [V3, V3][] {
@@ -63,7 +66,9 @@ export function boundsOf(points: V3[]): Bounds {
 
 export function frame(items: SpatialItem[], id?: Id): Bounds {
   const item = items.find((item) => item.id === id);
-  const selected = item ? [item] : items;
+  const selected = item
+    ? [item, ...items.filter((child) => child.ancestors.includes(item.id))]
+    : items;
   return selected.length
     ? boundsOf(selected.flatMap(({ bounds }) => [bounds.min, bounds.max]))
     : { min: [-5, -5, 0], max: [5, 5, 0] };
@@ -79,8 +84,32 @@ const colors = {
   route: 0x496dec,
 };
 
-export const deviceColor = (state?: string) =>
-  state === "online" ? 0x10a699 : state === "offline" ? 0xcf7152 : 0x80929b;
+export function deviceOffset(device: NonNullable<SpatialItem["device"]>): number {
+  return (device.index - (device.count - 1) / 2) * 25;
+}
+
+export function deviceMarkers(world: World, items: SpatialItem[]): SpatialItem[] {
+  const mounts = new Map(
+    items.filter(({ node }) => node.kind === "mount").map((item) => [item.id, item])
+  );
+  const groups = new Map<Id, Id[]>();
+  for (const [id, { mount }] of Object.entries(world.devices)) {
+    if (!mount || !mounts.has(mount)) continue;
+    const group = groups.get(mount) ?? [];
+    group.push(id);
+    groups.set(mount, group);
+  }
+  return [...groups].flatMap(([mount, devices]) => {
+    const point = mounts.get(mount)!;
+    return devices.map((id, index) => ({
+      ...point,
+      id,
+      node: { ...point.node, parent: mount, name: deviceName(world, id) },
+      ancestors: [mount, ...point.ancestors],
+      device: { index, count: devices.length },
+    }));
+  });
+}
 
 const order = { site: 0, zone: 1, building: 2, floor: 3, object: 4, route: 5, mount: 6 };
 
@@ -98,6 +127,7 @@ export function spatialScene(
   for (const [id, node] of entries) {
     const pose = poses.get(id)!;
     const ground = poses.get(siteOf(world, id))!.p[2];
+    const ancestors: Id[] = [];
     let ancestor: Id | null = id;
     while (ancestor !== null) {
       const current = nodeAt(world, ancestor);
@@ -107,6 +137,7 @@ export function spatialScene(
       )
         break;
       ancestor = current.parent;
+      if (ancestor !== null) ancestors.push(ancestor);
     }
     if (ancestor !== null) continue;
 
@@ -172,6 +203,7 @@ export function spatialScene(
           bounds: boundsOf(points),
           color,
           ground,
+          ancestors,
           below: base[2] < ground,
         });
         continue;
@@ -187,6 +219,7 @@ export function spatialScene(
       bounds,
       color,
       ground,
+      ancestors,
       below: bounds.min[2] < ground,
     });
   }

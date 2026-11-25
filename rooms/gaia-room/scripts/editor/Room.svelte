@@ -7,7 +7,6 @@
   import type { SiteBatch } from "../spatial/site-edits.ts";
   import type { ReferenceBatch } from "../storage/reference-contract.ts";
   import Workspace from "./site/Workspace.svelte";
-  import { virtualReadings } from "./site/virtual.ts";
 
   let locale = $state<"en" | "tr">("en");
   let labels = $state(en.workshop);
@@ -26,7 +25,6 @@
   let documentVisible = $state(true);
   let disposed = $state(false);
   const visible = $derived(hostVisible && documentVisible && !disposed);
-  let readingsSource = $state.raw(virtualReadings());
 
   async function refresh() {
     try {
@@ -105,7 +103,6 @@
         create ? "GaiaCreate" : "GaiaOpen",
         create ? { project, fixture, locale, layout: "site" } : { project: selected }
       );
-      readingsSource = virtualReadings();
       siteSelection = undefined;
     } catch (e) {
       error = String(e);
@@ -184,7 +181,7 @@
       {visible}
       startEditing={!!siteSelection}
       initialSelection={siteSelection}
-      {readingsSource}
+      {locale}
       onsave={save}
       onreopen={reopenSite}
       oninterior={openInterior}

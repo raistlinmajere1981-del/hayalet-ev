@@ -145,6 +145,12 @@ type Observation = {
 
 Viewer, bağlantı durumu, sanal kaynak, gözlem zamanı ve tazeliği ayrı gösterir. Yeni örnek gelmeyince son ölçümün yaşı artar. İstenen aktüatör durumu, komut teyidi ve ölçülen fiziksel sonuç ayrı tutulur. İlk dilimde sanal girdiler yeterlidir. Mesaj protokolü, firmware, kural dili ve zaman serisi tablosu sonraki milestone'lara aittir.
 
+### 02-C uygulama kontratı
+
+- `World.devices` kalıcı cihaz kimliği, kaynak, yerleşim ve capability listelerinin otoritesidir. İlk `role` alanı korunur. `roles`, `name`, `manufacturer` ve `model` eski sürüm 1 kayıtlarında isteğe bağlıdır. Marka/model envanter metadatasıdır. Sürümlü capability kataloğu ölçülebilir yetenekler için değer türünü ve birimi tarif eder. Kamera ve mikrofon katalogda özellik olarak ilan edilebilir.
+- `recordStatus` dar gözlem girişidir. Cihazın ilan ettiği capability, cihaz ve kaynak uyumu, fiziksel donanım kimliği, değer türü, birim, kalite ve ölçüm zamanı doğrulanır. `GaiaStatus` oda çağrıları kaynak olarak yalnız `simulated` kullanır. Son bağlantı, son iletişim, örnek ve kabul zamanları ayrı tutulur. Geçerli örnek 60 saniye yaşlandığında, bağlantı kesildiğinde veya son kopuştan eskiyse son bilinen veri olarak gösterilir. Hatalı örnek değer taşımaz.
+- Günlük yönetim tek proje yazıcısını kullanır. Projenin yanındaki sürümlü `device-status.json` dosyasında capability başına yalnız son gözlem ve güncel bağlantı bilgisi saklanır. Proje açma yan dosyaya bağımlı değildir. Silinen cihaz, değiştirilmiş donanım veya artık desteklenmeyen capability için kayıt görünümde çözülmez. Son durum okuma ve yayın arayüzün görünürlük olaylarından bağımsız yürüyebilir. Taze snapshot görünürken alınır ve durum girişi yalnız durum rozetlerini ve panelleri günceller.
+
 ## 3. Kabul fixture'ı · sera ve kümes
 
 Aşağıdaki YAML, `World` kaydının kısa yazımıdır. Sentetik arazideki iki bağımsız yapı, bodrum teknik hacmi ve iki yetiştirme katı olan sera ile yalnız dış hacmi çizilen kümestir. Bölge, duvar, masa ve cihaz noktasının ayrı kimlikleri vardır. Bu girdi yalnız test kurulumu içindir. Yeni kullanıcı projesi kendi arazisiyle başlar.

@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-B/1 referans, kalibrasyon ve ölçüm araçları Linux kapsamında kabul edildi. Sıradaki 02-B/2 gerçek arazi modelleme deneyimi. OpenPlan3D + Three.js ilk milestone için doğrulandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla kabul edildi. 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. Sıradaki 02-D kapanış denetimi. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -136,9 +136,9 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 01-C       | Tamamlandı                          | Kanonik şema, koordinat/kimlik/ilişki kuralları, editör/viewer kontratları ve fixture       |
 | 01-D       | Tamamlandı (P0 kontratları işlendi) | Bağımsız mimari audit, agent dağılımı ve ilk uygulama planı                                 |
 | 02-A       | Tamamlandı (Linux)                  | İlk çalışan bağımsız oda, yerel editör ve günlük viewer sınırı; kayıpsız round-trip         |
-| 02-B       | 02-B/1 kabul; 02-B/2 sıradaki       | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
-| 02-C       | Bekliyor                            | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
-| 02-D       | Bekliyor                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
+| 02-B       | 02-B/1 ve 02-B/2 kabul              | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
+| 02-C       | Tamamlandı (Linux)                  | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
+| 02-D       | Sıradaki                            | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
 | 03         | Bekliyor                            | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
 | 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
 | 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
@@ -349,6 +349,28 @@ GPU süreci sütunu işletim sistemi süreç ölçümüdür. `i915` sütunu ayn�
 
 24 Gaia veri testi, 27 oda sözleşmesi testi ve 9 Chromium arayüz testi geçti. Hedefli strict ESLint, Prettier, Gaia ve oda TypeScript kontrolleri ile script TypeScript kontrolü geçti. Svelte Check 0 hata ve 0 uyarı verdi. Oda ve Electron üretim çıktıları yenilendi. Referans deneyleri Linux ağ ad alanında yalnız loopback açıkken çalıştı. Ayrı kurulu 02-A turu Forge gezinmesi ve 3B yaşam döngüsünü kapsadı. BMP dönüştürücüsü Electron’da ayrıca piksel ve boyut açısından doğrulandı. [Gaia veri günlüğü](rooms/.build/gaia-room/evidence/02-b1/data.log) · [Chromium günlüğü](rooms/.build/gaia-room/evidence/02-b1/browser.log)
 
+### 02-B/2 — Gerçek arazi kullanımı
+
+Kullanıcı kendi arazisinde uydu görüntüsünü kalibre etti, çokgen sınırı çizdi, bağımsız yapıları ve katları modelledi, OpenPlan3D iç planını düzenledi, cihaz yerleştirdi, negatif kotlu altyapı hattı çizdi ve 3B görünümü kullandı. Kullanıcı bu turu kabul etti. Modelleme araçlarının ince ayarları, kalibrasyon sihirbazının kullanılabilirliği ve gerçek arazi deneyimindeki sürtünmeler 02-D değerlendirmesinde ele alınacak. Gerçek proje veya görseller kabul fixture’ına alınmadı.
+
+### 02-C — Günlük yönetim ve cihaz yönetimi
+
+Uygulama tabanı `e3c5fdc5`.
+
+- Genel Görünüm, açılır katman ağacını, nesne türü filtrelerini ve kadrajı 2B planla 3B yörüngede paylaşır. Ağaç ve harita aynı Gaia kimliğini seçer. Filtre kapalıysa **Göster ve kadrajla** seçimin gereken görünürlüğünü açar ve bunu bildirir. Bir montaj noktasındaki cihazların ayrı rozetleri aynı koordinattan türetilir.
+- Yönetim paneli arazi, yapı, kat, bölge, montaj noktası, cihaz ve altyapı hattına göre değişir. Proje envanteri yerleşmemiş cihazları da sayar. Arazi özeti proje envanterinin toplamını ve o araziye yerleşik cihazların sayısını gösterir. Bağlantı ve dikkat listesi seçilen araziyi kapsar. Bölge üyelikleri tekrarlı sayım üretmez. Altyapı hattı tam geometrisinden hesaplanan uzunluğu, uç mesafelerini, kot aralığını ve güzergâhı gösterir.
+- Cihaz oluşturma, düzenleme, bağlama, taşıma, ayırma ve silme mevcut doğrulanmış `GaiaSave` akışında atomik çalışır. Plana yeni montaj noktası eklemekle cihazı bu noktaya bağlamak tek işlemde kaydedilir. Cihaz silme onayı bağlı noktayı ve varsa donanım eşlemesini açıklar. Yerleşim değişse de cihaz kimliği, rol, marka/model ve capability alanları korunur. Sürüm 1 projelerde mevcut tek rol ve adsız cihaz kayıtları okunmaya devam eder.
+- `GaiaStatus` yalnız etkin proje oturumundan sanal bağlantı veya ölçüm girdisi alır. Sağlayıcı, capability ve kaynak kimliğiyle doğrulanan son durumları `device-status.json` içine yazar. Ölçümün zamanı, birimi, kaynağı, geçerliliği ve tazeliği ayrı görünür. Canlı simülasyon güncellemeleri dünya dosyasının baytlarını, revizyonunu ve mesh geometrisini korur. Bağlantı kesilince önceki ölçüm son bilinen olarak gösterilir. Yeniden bağlanınca güncel veri için yeni örnek gerekir.
+- Oda görünürleştiğinde son durum tekrar okunur. Tazelik için bir sonraki süre dolumuna kadar tek zamanlayıcı kurulur. Gizlenince görünüm ve host dinleyicileri durur. Three.js yalnız 3B açılınca, OpenPlan3D yalnız İç Plan açılınca yüklenir.
+
+**Linux kabul deneyleri**
+
+- Chromium’da boş projede fiziksel, çok rollü ve çok yetenekli cihaz oluşturuldu. Örnek arazide sanal cihaz mevcut montaj noktalarına taşındı, 2B planda bodrum kotuna yeni bir nokta eklendi, cihaz ayrılıp tekrar bağlandı ve nokta korunarak silindi. Ağaç, 2B ve 3B aynı cihazı seçti. Proje ve yerleşik cihaz sayıları ile yapı ve bölge özetleri doğrulandı. [Envanter](rooms/.build/gaia-room/evidence/02-c/browser-empty-inventory.png) · [Chromium günlüğü](rooms/.build/gaia-room/evidence/02-c/browser.log)
+- Kurulu Electron odasında sanal bağlantı ve nem ölçümü girildi. Bağlantı kesilince %52 nem son bilinen ölçüm olarak kaldı. Aynı durum 2B ve 3B’de ve Electron yeniden başlatıldıktan sonra görüldü. Dünya dosyası durum değişimlerinde bayt düzeyinde eşleşti. Forge’a geçişte Gaia görünümü durdu ve dönüşte yeniden etkinleşti. Oda kapatma, PNG/JPEG referansları, kalibrasyon, negatif kotlu iç plan ve kayıt sonrası geri açma da geçti. [Arazi özeti](rooms/.build/gaia-room/evidence/02-c/electron-site-overview.png) · [3B cihaz durumu](rooms/.build/gaia-room/evidence/02-c/electron-orbit-device.png) · [Electron günlüğü](rooms/.build/gaia-room/evidence/02-c/electron.log)
+- 27 Gaia veri, 31 oda sözleşmesi ve 11 Chromium arayüz testi geçti. Gaia ve oda TypeScript, uygulama TypeScript zinciri, hedefli ESLint, Prettier ve oda tasarım token kontrolü geçti. Svelte Check sıfır hata ve sıfır uyarı verdi. Oda kaynaklarından çalışma alanı runtime’ı, Electron main ve renderer üretim çıktıları alındı. [Veri testleri](rooms/.build/gaia-room/evidence/02-c/data.log) · [Oda sözleşmeleri](rooms/.build/gaia-room/evidence/02-c/room-contracts.log) · [Oda build’i](rooms/.build/gaia-room/evidence/02-c/room-build.log)
+
+Gerçek Client/Router entegrasyonu, donanım eşleme ve büyük sahnelerde performans ölçümü açık. Oda build’i tembel yüklenen Three.js parçası için Vite boyut uyarısını sürdürüyor.
+
 ## 9. Geliştirme ve kalite kuralları
 
 Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarlanır.
@@ -373,7 +395,7 @@ Yeni proje başlangıcı için kabul edilen 17 kural bu mevcut monorepo'ya uyarl
 
 ### Kapsam havuzu
 
-- Şimdi: 02-B/2 gerçek arazi modelleme deneyimi; kapsam kullanıcı deneyimindeki somut eksiklere göre belirlenir.
+- 02-D’de gerçek arazi deneyimindeki modelleme ince ayarları, kalibrasyon sihirbazı ve günlük yönetim kullanılabilirliği değerlendirilecek.
 - Sonra: gelişmiş hayvan/kamera analizi, toprak nemi haritası, güneş enerjisi/invertör, sulama optimizasyonu, hazır protokol adaptörleri, görsel atmosfer.
 - Deneysel: Android mesh/repeater, bataryasız ve ekransız anakartlar, fiziksel kamera/mikrofon taşıma, manyetik/RF haritası, otomatik mekânsal çıkarım, dağıtık görüntü işleme. Başarısızlık ana projeyi bloke etmez.
 
@@ -385,4 +407,4 @@ Adayların ana depo lisansı uygun olsa bile transitif paketler, model/doku/font
 
 ## 11. Açık konular / sonraki session
 
-02-A Linux kapsamı kapatıldı. Bağımsız kapanış incelemesinde tam kalite günlüğü (1981 pass, 0 fail, 2 skip), paket/ölçüm raporu ve kaynak denetimi değişiklikleri incelendi. Ölçüm ve UI deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır; full test yeniden çalıştırılmadı. 02-B/1 Linux kapsamında kabul edildi. Bağımsız incelemede referans, ölçüm ve kayıt kaynakları incelendi; 24 Gaia veri testi yeniden geçti. Chromium, Electron ve oda sözleşmesi deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. 02-B/2 gerçek arazi modelleme deneyimi ile açılır. Gerçek cihaz ve ağ davranışı Client ve Router aşamalarındadır. Windows/macOS kurulumu, farklı GPU/sürücüler ve uzun süreli büyük sahnelerde kaynak davranışı açık doğrulama alanlarıdır. Yerel LLM’nin modeli ve çevrimdışı davranışı kendi entegrasyonunda ele alınacak.
+02-A Linux kapsamı kapatıldı. Bağımsız kapanış incelemesinde tam kalite günlüğü (1981 pass, 0 fail, 2 skip), paket/ölçüm raporu ve kaynak denetimi değişiklikleri incelendi. Ölçüm ve UI deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır; full test yeniden çalıştırılmadı. 02-B/1 Linux kapsamında kabul edildi. Bağımsız incelemede referans, ölçüm ve kayıt kaynakları incelendi; 24 Gaia veri testi yeniden geçti. Chromium, Electron ve oda sözleşmesi deneyleri uygulama agent'ının kayıtlı sonuçlarına dayanır. 02-B/2 gerçek arazi kullanımıyla kabul edildi. 02-C Linux kapsamında kabul edildi. Bağımsız kaynak incelemesinde cihaz, gözlem ve kayıt sınırları kontrol edildi; 27 Gaia veri testi yeniden geçti. UI ve Electron sonuçları uygulama agent'ının kayıtlı deneylerine dayanır. 02-D'de özellikle Workspace.svelte değişim eksenleri, durum verisinin yaşam döngüsü ve tam kalite zinciri değerlendirilecek. Kalibrasyon sihirbazı zorunlu kapanış koşulu değildir; modelleme ince ayarları somut ihtiyaçlara göre ertelenebilir. Gerçek cihaz ve ağ davranışı Client ve Router aşamalarındadır. Windows/macOS kurulumu, farklı GPU/sürücüler ve uzun süreli büyük sahnelerde kaynak davranışı açık doğrulama alanlarıdır. Yerel LLM’nin modeli ve çevrimdışı davranışı kendi entegrasyonunda ele alınacak.

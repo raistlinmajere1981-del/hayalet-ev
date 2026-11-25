@@ -68,10 +68,12 @@ async function launch() {
     const page = await app.firstWindow();
     await page.locator("button[data-room-nav]").first().waitFor({ state: "attached" });
     await page.locator("#splash-screen").waitFor({ state: "detached" });
-    await app.evaluate(({ BrowserWindow }) => {
+    await app.evaluate(({ BrowserWindow, screen }) => {
       const shell = BrowserWindow.getAllWindows().find(({ webContents }) =>
         webContents.getURL().endsWith("/dist/renderer/index.html")
       );
+      const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+      shell.setSize(Math.min(width, 1600), Math.min(height, 1000));
       shell.show();
       shell.focus();
     });
@@ -178,7 +180,7 @@ async function planPoint(session, point) {
   })()`);
 }
 async function toggleUnderground(session) {
-  await session.js("document.querySelector('.map-toolbar input[type=checkbox]').click()");
+  await session.js("document.querySelector('.map-toolbar > .check input[type=checkbox]').click()");
 }
 async function selectMode(session, overview) {
   if (overview) await press(session, "Overview", "Genel Görünüm");
@@ -310,11 +312,7 @@ async function editSite(session) {
   await press(session, "Place device", "Cihaz yerleştir");
   await sendPointer(session, await planPoint(session, [16, 16]));
   const mount = await js("document.querySelector('[data-selected-id]').dataset.selectedId");
-  const beforeVirtual = await js("document.querySelector('.map-viewport').innerHTML");
-  await press(session, "Update sample", "Ölçümü güncelle");
-  assert.equal(await js("!!document.querySelector('.device-card .reading')"), true);
-  const afterVirtual = await js("document.querySelector('.map-viewport').innerHTML");
-  assert.equal(afterVirtual, beforeVirtual);
+  assert.equal(await js("!!document.querySelector('.device-card li')"), true);
   await press(session, "Draw utility line", "Hat çiz");
   await editNumber(session, ["Elevation (m)", "Kot (m)"], -2.5, ".edit-toolbar");
   await sendPointer(session, await planPoint(session, [32, 15]));
@@ -357,6 +355,72 @@ async function editSite(session) {
   console.info("Gaia site plan, 2D/3D selection and revision", saved.world.revision);
 }
 
+const deviceRun = process.argv.includes("--devices");
+const deviceEvidence = join(
+  repo,
+  "rooms/.build/gaia-room/evidence/02-c",
+  standalone ? "standalone" : ""
+);
+
+async function exerciseDeviceStatus(session) {
+  const { js } = session;
+  const before = await readFile(path);
+  await selected(session, "plot");
+  assert.equal(await js("document.querySelector('[data-count=total]').textContent"), "7");
+  await capture(session, "electron-site-overview.png", deviceEvidence);
+  await js("document.querySelector('[data-device=c2]').click()");
+  await selected(session, "c2");
+  await js("document.querySelector('.virtual-input summary').click()");
+  await press(session, "Update connection", "Bağlantıyı güncelle");
+  await expect
+    .poll(() => js("document.querySelector('svg [data-gaia-id=c2]').dataset.deviceHealth"))
+    .toBe("noData");
+  await js(`(() => {
+    const input = document.querySelector('.virtual-input input[name=sample]');
+    input.value = "52";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  })()`);
+  await press(session, "Update sample", "Ölçümü güncelle");
+  await expect
+    .poll(() => js("document.querySelector('li[data-freshness=fresh] .reading')?.textContent"))
+    .toMatch(/52 %/);
+  await js(`(() => {
+    const select = document.querySelector('.virtual-input form select');
+    select.value = "offline";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  await press(session, "Update connection", "Bağlantıyı güncelle");
+  await expect
+    .poll(() => js("document.querySelector('svg [data-gaia-id=c2]').dataset.deviceHealth"))
+    .toBe("offline");
+  await expect
+    .poll(() => js("document.querySelector('li[data-freshness=stale] .reading')?.textContent"))
+    .toMatch(/52 %/);
+  await js("document.querySelector('.virtual-input summary').click()");
+  await capture(session, "electron-offline-device.png", deviceEvidence);
+
+  if (!standalone) {
+    await press(session, "3D orbit", "3B yörünge");
+    await expect
+      .poll(() =>
+        js("document.querySelector('[data-gaia-device=c2]:not([hidden])')?.dataset.deviceHealth")
+      )
+      .toBe("offline");
+    await pickLayer(session, "glass");
+    await js("document.querySelector('[data-gaia-device=c2]').click()");
+    await selected(session, "c2");
+    await capture(session, "electron-orbit-device.png", deviceEvidence);
+    await press(session, "2D plan", "2B plan");
+    await selected(session, "c2");
+    await js("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+  }
+
+  assert.deepEqual(await readFile(path), before);
+  console.info(
+    "Gaia 02-C installed room shows offline and last known data, with unchanged world bytes"
+  );
+}
+
 const referenceRun = process.argv.includes("--references");
 const referenceProject = "survey-yard";
 const referenceRoot = join(root, "data/room-storage/gaia-room/projects", referenceProject);
@@ -364,18 +428,18 @@ const referenceDoc = async () =>
   JSON.parse(await readFile(join(referenceRoot, "world.json"), "utf8"));
 const evidence = join(repo, "rooms/.build/gaia-room/evidence/02-b1");
 
-async function capture(session, filename) {
+async function capture(session, filename, output = evidence) {
   await session.js(
     "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))"
   );
-  await mkdir(evidence, { recursive: true });
+  await mkdir(output, { recursive: true });
   const id = await session.guest.evaluate((guest) => guest.getWebContentsId());
   const encoded = await session.app.evaluate(
     async ({ webContents }, guestId) =>
       (await webContents.fromId(guestId).capturePage()).toPNG().toString("base64"),
     id
   );
-  await writeFile(join(evidence, filename), Buffer.from(encoded, "base64"));
+  await writeFile(join(output, filename), Buffer.from(encoded, "base64"));
 }
 
 async function selectProject(session, id) {
@@ -812,6 +876,10 @@ try {
     .poll(() => js("document.querySelector('.projects button:last-child').disabled"))
     .toBe(false);
   await js("document.querySelector('.projects button:last-child').click()");
+  if (deviceRun) {
+    await expect.poll(() => js("!!document.querySelector('[data-device=c2]')")).toBe(true);
+    await exerciseDeviceStatus(running);
+  }
   await exerciseSite(running);
   await expect
     .poll(() => js("document.querySelector('footer')?.innerText ?? document.body.innerText"), {
@@ -870,7 +938,7 @@ try {
   console.info("Committed revision", saved.world.revision);
   await closeApp(running.app);
   running = undefined;
-  if (standalone) {
+  if (standalone || referenceRun) {
     const settingsPath = join(root, "config/settings.json");
     const settings = JSON.parse(await readFile(settingsPath, "utf8"));
     settings.general.language = "en";
@@ -878,7 +946,7 @@ try {
   }
   console.info("Opening installed Gaia Room");
   running = await launch();
-  if (standalone) {
+  if (standalone || referenceRun) {
     await expect.poll(() => running.js("document.documentElement.lang")).toBe("en");
     await expect
       .poll(() => running.js("document.querySelector('.projects button')?.textContent"))
@@ -891,6 +959,16 @@ try {
   await expect
     .poll(() => running.js("document.querySelector('.workspace-header')?.innerText"))
     .toMatch(/smoke/);
+  if (deviceRun) {
+    await running.js("document.querySelector('[data-device=c2]').click()");
+    await selected(running, "c2");
+    await expect
+      .poll(() =>
+        running.js("document.querySelector('li[data-freshness=stale] .reading')?.textContent")
+      )
+      .toMatch(/52 %/);
+    console.info("Gaia 02-C restored the latest device status after Electron restart");
+  }
   const reopened = await running.js(
     'window.roomAPI.requestStorageCommand("GaiaOpen",{project:"smoke"})'
   );

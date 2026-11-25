@@ -1,3 +1,5 @@
+import { capabilityId, deviceRoles, type DeviceRole } from "../devices/capabilities.ts";
+
 export type Id = string;
 export type V2 = [number, number];
 export type V3 = [number, number, number];
@@ -28,8 +30,12 @@ export interface SpatialNode extends Pose {
   [key: string]: unknown;
 }
 
-interface Device {
-  role: "router" | "client" | "sensor" | "actuator" | "external";
+export interface Device {
+  role: DeviceRole;
+  roles?: DeviceRole[];
+  name?: string;
+  manufacturer?: string;
+  model?: string;
   source: "virtual" | "physical";
   capabilities: string[];
   mount?: Id;
@@ -250,10 +256,36 @@ export function validateWorld(world: World): void {
   }
   const hardware = new Set<Id>();
   for (const [id, device] of Object.entries(world.devices)) {
-    if (device.mount !== undefined && nodeAt(world, device.mount).kind !== "mount")
+    if (
+      !device ||
+      !deviceRoles.includes(device.role) ||
+      (device.source !== "virtual" && device.source !== "physical") ||
+      !Array.isArray(device.capabilities) ||
+      !device.capabilities.every(capabilityId) ||
+      new Set(device.capabilities).size !== device.capabilities.length ||
+      (device.roles !== undefined &&
+        (!Array.isArray(device.roles) ||
+          device.roles[0] !== device.role ||
+          !device.roles.every((role) => deviceRoles.includes(role)) ||
+          new Set(device.roles).size !== device.roles.length)) ||
+      [device.name, device.manufacturer, device.model].some(
+        (value) =>
+          value !== undefined && (typeof value !== "string" || !value.trim() || value.length > 100)
+      )
+    )
+      throw new Error(`Invalid Gaia device at ${id}`);
+    if (
+      device.mount !== undefined &&
+      (typeof device.mount !== "string" || nodeAt(world, device.mount).kind !== "mount")
+    )
       throw new Error(`Invalid device mount at ${id}`);
     if (device.hardwareId !== undefined) {
-      if (device.source !== "physical" || hardware.has(device.hardwareId))
+      if (
+        device.source !== "physical" ||
+        typeof device.hardwareId !== "string" ||
+        !device.hardwareId.trim() ||
+        hardware.has(device.hardwareId)
+      )
         throw new Error(`Invalid hardware binding at ${id}`);
       hardware.add(device.hardwareId);
     }

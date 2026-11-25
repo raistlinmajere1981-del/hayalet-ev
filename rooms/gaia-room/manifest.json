@@ -47,6 +47,12 @@
           "description": "Read a project reference image preview",
           "scope": "room-ui",
           "exposure": "internal"
+        },
+        {
+          "name": "GaiaStatus",
+          "description": "Read latest device status or submit a virtual update",
+          "scope": "room-ui",
+          "exposure": "internal"
         }
       ]
     }
