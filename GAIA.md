@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. Sıradaki 03-A Client donanım ve kontrat tasarımı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
+> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. 03-A Client donanım ve kontrat tasarımı başladı; ilk cihaz incelemesi ve USB iletişim fizibilitesi tamamlandı. [Gaia mimari kontratları](GAIA-ARCHITECTURE.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -118,6 +118,30 @@ Bunlar kesin görev atamaları değildir. Mevcut Companion minSdk 28 olduğundan
 
 Harici besleme devresi ve gerilim/akım ölçülmeden uzun süreli kullanım onaylanmış sayılmaz. Eski Android cihazlar internetten izole edilir; kişisel telefonun verileri ve mevcut işlevleri korunur. Donanım deneyleri yazılım milestone'larını bloke etmemeli.
 
+### 03-A/1 — Gerçek cihaz incelemesi ve ilk bağlantı (26 Kasım 2026)
+
+Kullanıcı kişisel SM-J700F'yi taşınabilir Companion yönetim paneli, ekranı arızalı SM-J701F'yi bağımsız Client test cihazı olarak belirledi. İki cihaz ADB/scrcpy ile erişildi. J701F mevcut ROM ile kullanılacak; root zorunlu başlangıç koşulu değil, ölçülen bir kısıt ve net fayda varsa ayrıca değerlendirilebilir. Kullanıcı root gerektiren saha çözümüne karşı değil. Kişisel telefonun verileri, Companion ve USB internet işlevi korunacak.
+
+| Ölçülen özellik      | SM-J700F (Companion)                          | SM-J701F (Client)                                                   |
+| -------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| Android / API        | 13 / 33, LineageOS 20                         | 9 / 28, Samsung ROM                                                 |
+| CPU / ABI            | Exynos 7580, 8 çekirdek, 1,5 GHz; armeabi-v7a | Exynos 7870, 8 çekirdek, 1,586 GHz; armeabi-v7a                     |
+| RAM / boş veri alanı | 1,5 GB sınıfı / 7,7 GiB                       | 2 GB sınıfı / 7,8 GiB                                               |
+| Sensör servisi       | STM K2HH ivmeölçer, STK3013 yakınlık          | STM K2HH ivmeölçer, CM36672P yakınlık; Samsung yazılımsal sensörler |
+| Anlık batarya        | %100, 21,9 °C, 4,382 V                        | %60, 19,3 °C, 4,195 V                                               |
+| Güvenlik yaması      | 2023-08-05                                    | 2021-06-01                                                          |
+
+İvmeölçer örnekleri iki cihazda da gözlendi. Kamera servisi ön/arka kamera bildiriyor; mikrofon, Wi-Fi Direct, Bluetooth LE, GPS ve USB host özellikleri ilan edilmiş ancak gerçek işlev testi bu turda yapılmadı. Jiroskop, manyetometre, ortam sıcaklığı ve nem sensörü sensör servisinde görülmedi; J700F özellik listesindeki pusula beyanı sensör servisiyle uyuşmuyor. Batarya sıcaklığı ortam sıcaklığı değildir. Cihaz saati J701F'de 2017-01-01, merkezde ve J700F'de 2026-11-26 idi. Cihaz ölçüm saati, monotonik zaman ve merkezi kabul zamanı farklı tutulacak; güvenli bağlantı için saat önkoşulu ayrıca ele alınacak. Donanım kimliği/seri numaraları repo veya paketlere yazılmaz.
+
+Mevcut Companion API 28, Java/Kotlin 17 ve Gradle/AGP altyapısına sahip; masaüstü köprüsü localhost/ADB reverse kullanıyor. Client bağımsız APK olacak; Companion'ın TTS/STT/model paketlerini, izinlerini ve LAN'a uygun olmayan HTTP köprüsünü taşımayacak. İlk Client API 28 alt sınırı ve ARM32 uyumluluğu önerilir; API 17 ayrı fizibilite. J701F ile geçici, yalnız loopback dinleyen test soketinde ADB reverse üzerinden HTTP isteği ve 200 GAIA_USB_OK yanıtı doğrulandı. İlk shell denemesinde yalnız istek ulaştı, stdin açık tutularak ikinci deneyde yanıt da alındı. Geçici reverse eşlemesi kaldırıldı; önceki eşlemeler değişmedi. LAN/Wi-Fi ve Android uygulamasının arka plan iletişimi henüz test edilmedi.
+
+### 03-A/B/C — Dar ilerleme planı
+
+- 03-A/2: Ayrı, atıl teşhis APK'sı ile rootsuz sensör/enerji örnekleri, kullanıcı başlatmalı görünür foreground hizmeti, ekran kapalı çalışma, bağlantı kesintisi ve kaynak ölçümü. USB loopback test alıcısı üretim saha protokolü değildir. Üretim projeleri, Companion ve kişisel telefon değişmez. Root, ekran kapalı çalışma engeli varsa neden/etki ölçülerek değerlendirilir.
+- 03-A/3: Ölçülen donanım davranışına göre sürümlü gerçek gözlem kontratı, kimlik/eşleme ve iptal, ilan edilen/kabul edilen capability, transport ve TLS güveni, heartbeat/timeout, saat sapması ve tekrar/yeniden bağlanma politikası. Kritik güvenlik sınırı bağımsız denetlenir. İlk sürümde sürekli geçmiş deposu veya yüksek frekanslı ham sensör yayını yok.
+- 03-B: Bağımsız Client ve main-process yetkili ingest, tek proje yazıcısı, durum yan dosyası/epoch kuralları korunarak gerçek gözlem. GaiaStatus UI yalnız simulated kalır. UI gizli/kapalıyken alım çalışır; oda açıkken taze durum görünür.
+- 03-C: İzole yerel ağda USB'den bağımsız bağlantı, yeniden bağlanma ve offline/stale davranışı, gerçek cihazın mekânsal noktaya eşlenmesi, kaynak ve güvenlik kabulü. Mevcut internet tethering bağlantısı değiştirilmez. Kamera/mikrofon akışı ve fiziksel komut yok; Companion yönetimi 04'te gerçek kontrata göre eklenir.
+
 ## 7. Saha verisi ve güvenlik ilkeleri
 
 Gözlem: cihaz/yetenek kimliği, zaman damgası, birim, kaynak, kalite ve tazelik; son bilinen değer canlı ölçüm gibi gösterilmez. Talep edilen durum, komut sonucu ve ölçülen fiziksel durum ayrıdır.
@@ -139,7 +163,7 @@ LAN protokolü, eşleme/kimlik doğrulama ve iletişim güvenliği Client deneyi
 | 02-B       | 02-B/1 ve 02-B/2 kabul              | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Tamamlandı (Linux)                  | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Tamamlandı (Linux)                  | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
-| 03         | 03-A sıradaki                       | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
+| 03         | 03-A/1 tamam; /2 sıradaki           | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
 | 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
 | 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
 | 06         | Bekliyor                            | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
