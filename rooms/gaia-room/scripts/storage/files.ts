@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, mkdir, open, rename, rm, unlink } from "node:fs/promises";
+import { lstat, mkdir, open, realpath, rename, rm, unlink } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
@@ -70,23 +70,37 @@ export async function publish(path: string, bytes: string | Buffer): Promise<voi
 }
 
 const queues = new Map<string, Promise<unknown>>();
+export async function acquireDirectoryLock(dir: string, owner = false) {
+  // Keep the existing writer namespace so an older process still contends on the same project.
+  const key =
+    (owner ? "hev-gaia-owner-" : "hev-gaia-") +
+    createHash("sha256")
+      .update(await realpath(dir))
+      .digest("hex")
+      .slice(0, 40);
+  const address = process.platform === "win32" ? "\\\\.\\pipe\\" + key : "\0" + key;
+  const lock = createServer((socket) => socket.destroy());
+  await new Promise<void>((resolve, reject) => {
+    lock.once("error", reject);
+    lock.listen(address, resolve);
+  });
+  lock.unref();
+  return () =>
+    new Promise<void>((resolve, reject) =>
+      lock.close((error) => (error ? reject(error) : resolve()))
+    );
+}
+
 export async function serialized<T>(dir: string, work: () => Promise<T>): Promise<T> {
   const previous = queues.get(dir) ?? Promise.resolve();
   const next = previous
     .catch(() => {})
     .then(async () => {
-      // Both supported desktop platforms release this kernel-owned name on process death.
-      const key = "hev-gaia-" + createHash("sha256").update(dir).digest("hex").slice(0, 40);
-      const address = process.platform === "win32" ? "\\\\.\\pipe\\" + key : "\0" + key;
-      const lock = createServer((socket) => socket.destroy());
-      await new Promise<void>((resolve, reject) => {
-        lock.once("error", reject);
-        lock.listen(address, resolve);
-      });
+      const release = await acquireDirectoryLock(dir);
       try {
         return await work();
       } finally {
-        await new Promise<void>((resolve) => lock.close(() => resolve()));
+        await release();
       }
     });
   queues.set(dir, next);

@@ -5,3 +5,4 @@ import "../../rooms/gaia-room/scripts/tests/references.test.ts";
 import "../../rooms/gaia-room/scripts/tests/devices.test.ts";
 import "../../rooms/gaia-room/scripts/tests/workspace.test.ts";
 import "../../rooms/gaia-room/scripts/tests/physical.test.ts";
+import "../../rooms/gaia-room/scripts/tests/enrollment.test.ts";

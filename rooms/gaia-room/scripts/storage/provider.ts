@@ -1,17 +1,18 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { lstat, readdir } from "node:fs/promises";
-import { nodeAt, validateWorld, type World } from "../spatial/world.ts";
+import { nodeAt, validateWorld } from "../spatial/world.ts";
 import { newProject, referencePng } from "../spatial/project.ts";
 import { applyTrusted, fields, parseBatch, segment, uuid } from "./batch.ts";
+import {
+  publishManagedWorld,
+  readDocument,
+  requestDigest,
+  type Document,
+} from "./project-document.ts";
 import { gridPng } from "./fixture-image.ts";
 import { applyTrustedSite, parseSiteBatch } from "./site-batch.ts";
-import {
-  deviceStatusIdentity,
-  parseVirtualUpdate,
-  projectStatuses,
-  reconcileStatuses,
-} from "./status-store.ts";
+import { parseVirtualUpdate, projectStatuses } from "./status-store.ts";
 import { directory, hasCode, publish, readRegular, serialized } from "./files.ts";
 import { assetIssues, readAsset, type DecodeRaster } from "./images.ts";
 import {
@@ -20,17 +21,6 @@ import {
   publishReferenceAsset,
   retireReferenceAsset,
 } from "./reference-batch.ts";
-
-interface Receipt {
-  id: string;
-  digest: string;
-  revision: number;
-}
-interface Document {
-  world: World;
-  lastOperation: Receipt | null;
-  statusEpoch?: number;
-}
 interface Context {
   storageRoot: string;
   owner: object;
@@ -47,53 +37,6 @@ const commands = [
   "GaiaReference",
   "GaiaStatus",
 ];
-
-// Key order has no meaning in a room command. Array order is part of its content.
-function canonical(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-        .map(([k, v]) => [k, canonical(v)])
-    );
-  return value;
-}
-
-function recordHasEpoch(data: unknown): boolean {
-  return !!data && typeof data === "object" && Object.hasOwn(data, "statusEpoch");
-}
-
-async function readDocument(path: string, project: string): Promise<Document> {
-  const data: unknown = JSON.parse((await readRegular(path)).toString("utf8"));
-  fields(
-    data,
-    recordHasEpoch(data) ? ["world", "lastOperation", "statusEpoch"] : ["world", "lastOperation"]
-  );
-  const world = data["world"] as World;
-  validateWorld(world);
-  if (world.id !== project) throw new Error("Stored project identity mismatch");
-  if (
-    recordHasEpoch(data) &&
-    (typeof data["statusEpoch"] !== "number" ||
-      !Number.isSafeInteger(data["statusEpoch"]) ||
-      data["statusEpoch"] < 0 ||
-      data["statusEpoch"] > world.revision)
-  )
-    throw new Error("Invalid Gaia status epoch");
-  const receipt = data["lastOperation"];
-  if (receipt !== null) {
-    fields(receipt, ["id", "digest", "revision"]);
-    uuid(receipt["id"]);
-    if (
-      receipt["revision"] !== world.revision ||
-      typeof receipt["digest"] !== "string" ||
-      !/^[a-f0-9]{64}$/.test(receipt["digest"])
-    )
-      throw new Error("Invalid saved operation");
-  }
-  return data as unknown as Document;
-}
 
 export async function projectCommand(
   { storageRoot, owner }: Context,
@@ -215,9 +158,7 @@ export async function projectCommand(
     } else doc = await readDocument(path, project);
     const issues = await assetIssues(dir, doc.world);
     if (batch) {
-      const digest = createHash("sha256")
-        .update(JSON.stringify(canonical(batch)))
-        .digest("hex");
+      const digest = requestDigest(batch);
       if (doc.lastOperation?.id === batch.operationId) {
         if (doc.lastOperation.digest !== digest)
           throw new Error("Operation ID was reused with different content");
@@ -252,25 +193,8 @@ export async function projectCommand(
       if (reference?.upload) await publishReferenceAsset(dir, reference.upload);
       if (candidate !== doc.world) {
         // Persist the inventory generation with the world, not the disposable sidecar.
-        // A -> B -> A must not make an old sidecar valid after missed reconciliation.
-        const previousEpoch = doc.statusEpoch ?? 0;
-        const statusEpoch =
-          deviceStatusIdentity(candidate) !== deviceStatusIdentity(doc.world)
-            ? candidate.revision
-            : previousEpoch;
-        await publish(
-          path,
-          JSON.stringify({
-            world: candidate,
-            statusEpoch,
-            lastOperation: { id: batch.operationId, digest, revision: candidate.revision },
-          })
-        );
-        try {
-          await reconcileStatuses(dir, candidate, doc.world, statusEpoch, previousEpoch);
-        } catch {
-          // The canonical world is durable. Status reads fail closed until the sidecar is replaced.
-        }
+        // A -> B -> A must not make an old sidecar or authorization valid again.
+        await publishManagedWorld(storageRoot, dir, doc, candidate, batch.operationId, digest);
       }
       if (reference?.removed) await retireReferenceAsset(dir, reference.removed);
       active.revision = candidate.revision;
