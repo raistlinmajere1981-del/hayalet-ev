@@ -1,0 +1,18 @@
+{
+  "v": 1,
+  "projectId": "sera",
+  "deviceId": "client-1",
+  "installationId": "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "runId": "1b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e",
+  "offered": [
+    "battery.level.v1",
+    "battery.pack-temperature.v1",
+    "battery.voltage.v1",
+    "battery.charge-state.v1",
+    "accelerometer.xyz.v1",
+    "proximity.state.v1",
+    "network.state.v1",
+    "signal.read.v1",
+    "camera.view.v1"
+  ]
+}

@@ -9,6 +9,8 @@
 *.node binary
 *.db binary
 *.sqlite binary
+# Wire fixtures are byte-exact, including whitespace and invalid UTF-8.
+gaia-protocol/v1/fixtures/raw/** binary
 
 # Unified diff context lines require a leading space even when empty.
 rooms/gaia-room/scripts/editor/openplan3d.patch whitespace=-blank-at-eol

@@ -1,0 +1,573 @@
+{
+  "v": 1,
+  "cases": [
+    {
+      "id": "session-open-request.valid",
+      "file": "valid/session-open-request.json",
+      "schema": "sessionOpenRequest",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "session-open-request.t1",
+      "file": "valid/session-open-request-t1.json",
+      "schema": "sessionOpenRequest",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "session-open-response.valid",
+      "file": "valid/session-open-response.json",
+      "schema": "sessionOpenResponse",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "session-open-response.t1",
+      "file": "valid/session-open-response-t1.json",
+      "schema": "sessionOpenResponse",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.valid",
+      "file": "valid/observation.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.t1-accepted",
+      "file": "valid/observation-t1-accepted.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.t2-zeros",
+      "file": "valid/observation-t2-zeros.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.all-valid",
+      "file": "valid/observation-all-valid.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.all-invalid",
+      "file": "valid/observation-all-invalid.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.all-missing",
+      "file": "valid/observation-all-missing.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "observation.heartbeat-empty",
+      "file": "valid/observation-heartbeat-empty.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "ack.valid",
+      "file": "valid/ack.json",
+      "schema": "ack",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "error.valid",
+      "file": "valid/error.json",
+      "schema": "error",
+      "expect": "valid",
+      "layer": "schema"
+    },
+    {
+      "id": "session-open-request.wrong-version",
+      "file": "invalid/schema/session-open-request-wrong-version.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "protocol-version"
+    },
+    {
+      "id": "session-open-request.missing-field",
+      "file": "invalid/schema/session-open-request-missing-field.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "missing-field"
+    },
+    {
+      "id": "session-open-request.extra-field",
+      "file": "invalid/schema/session-open-request-extra-field.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "extra-field"
+    },
+    {
+      "id": "session-open-request.invalid-uuid",
+      "file": "invalid/schema/session-open-request-invalid-uuid.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-uuid"
+    },
+    {
+      "id": "session-open-request.duplicate-capability",
+      "file": "invalid/schema/session-open-request-duplicate-capability.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "duplicate-capability"
+    },
+    {
+      "id": "session-open-request.reserved-segment",
+      "file": "invalid/schema/session-open-request-reserved-segment.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-segment"
+    },
+    {
+      "id": "session-open-request.path-segment",
+      "file": "invalid/schema/session-open-request-path-segment.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-segment"
+    },
+    {
+      "id": "session-open-request.too-many-capabilities",
+      "file": "invalid/schema/session-open-request-too-many-capabilities.json",
+      "schema": "sessionOpenRequest",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "capability-limit"
+    },
+    {
+      "id": "session-open-response.duplicate-capability",
+      "file": "invalid/schema/session-open-response-duplicate-capability.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "duplicate-capability"
+    },
+    {
+      "id": "session-open-response.unknown-capability",
+      "file": "invalid/schema/session-open-response-unknown-capability.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "unknown-capability"
+    },
+    {
+      "id": "observation.wrong-unit",
+      "file": "invalid/schema/observation-wrong-unit.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-unit"
+    },
+    {
+      "id": "observation.extra-packet-field",
+      "file": "invalid/schema/observation-extra-packet-field.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "extra-field"
+    },
+    {
+      "id": "observation.missing-packet-field",
+      "file": "invalid/schema/observation-missing-packet-field.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "missing-field"
+    },
+    {
+      "id": "observation.wrong-value-type",
+      "file": "invalid/schema/observation-wrong-value-type.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-value-type"
+    },
+    {
+      "id": "observation.safe-integer-overflow",
+      "file": "invalid/schema/observation-safe-integer-overflow.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "unsafe-integer"
+    },
+    {
+      "id": "observation.invalid-vector",
+      "file": "invalid/schema/observation-invalid-vector.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-vector"
+    },
+    {
+      "id": "observation.proximity-distance",
+      "file": "invalid/schema/observation-proximity-distance.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-value-type"
+    },
+    {
+      "id": "observation.extra-sample-field",
+      "file": "invalid/schema/observation-extra-sample-field.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "extra-field"
+    },
+    {
+      "id": "observation.missing-sample-field",
+      "file": "invalid/schema/observation-missing-sample-field.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "missing-field"
+    },
+    {
+      "id": "observation.missing-with-sample-time",
+      "file": "invalid/schema/observation-missing-with-sample-time.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "missing-time-rule"
+    },
+    {
+      "id": "observation.valid-with-null",
+      "file": "invalid/schema/observation-valid-with-null.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-value-type"
+    },
+    {
+      "id": "observation.invalid-with-value",
+      "file": "invalid/schema/observation-invalid-with-value.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-value-type"
+    },
+    {
+      "id": "observation.negative-time",
+      "file": "invalid/schema/observation-negative-time.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "negative-time"
+    },
+    {
+      "id": "observation.seq-zero",
+      "file": "invalid/schema/observation-seq-zero.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "sequence-range"
+    },
+    {
+      "id": "observation.unknown-capability",
+      "file": "invalid/schema/observation-unknown-capability.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "unknown-capability"
+    },
+    {
+      "id": "observation.pack-temperature-ambient-object",
+      "file": "invalid/schema/observation-pack-temperature-ambient-object.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "wrong-value-type"
+    },
+    {
+      "id": "observation.ambient-capability",
+      "file": "invalid/schema/observation-ambient-capability.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "unknown-capability"
+    },
+    {
+      "id": "ack.invalid-uuid",
+      "file": "invalid/schema/ack-invalid-uuid.json",
+      "schema": "ack",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-uuid"
+    },
+    {
+      "id": "ack.seq-zero",
+      "file": "invalid/schema/ack-seq-zero.json",
+      "schema": "ack",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "sequence-range"
+    },
+    {
+      "id": "error.unknown-code",
+      "file": "invalid/schema/error-unknown-code.json",
+      "schema": "error",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "unknown-error-code"
+    },
+    {
+      "id": "error.extra-field",
+      "file": "invalid/schema/error-extra-field.json",
+      "schema": "error",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "extra-field"
+    },
+    {
+      "id": "observation.duplicate-capability",
+      "file": "invalid/semantic/observation-duplicate-capability.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "duplicate-capability",
+      "context": {}
+    },
+    {
+      "id": "observation.unaccepted-capability",
+      "file": "invalid/semantic/observation-unaccepted-capability.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "unapproved-capability",
+      "context": {
+        "accepted": [
+          "battery.level.v1",
+          "battery.pack-temperature.v1",
+          "battery.voltage.v1",
+          "battery.charge-state.v1",
+          "accelerometer.xyz.v1",
+          "network.state.v1",
+          "signal.read.v1"
+        ]
+      }
+    },
+    {
+      "id": "observation.missing-capability",
+      "file": "invalid/semantic/observation-missing-capability.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "missing-capability",
+      "context": {
+        "accepted": [
+          "battery.level.v1",
+          "battery.pack-temperature.v1",
+          "battery.voltage.v1",
+          "battery.charge-state.v1",
+          "accelerometer.xyz.v1",
+          "proximity.state.v1",
+          "network.state.v1",
+          "signal.read.v1"
+        ]
+      }
+    },
+    {
+      "id": "observation.sample-after-send",
+      "file": "invalid/semantic/observation-sample-after-send.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "sample-after-send",
+      "context": {}
+    },
+    {
+      "id": "observation.t1-unaccepted-samples",
+      "file": "invalid/semantic/observation-t1-unaccepted-samples.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "unapproved-capability",
+      "context": {
+        "accepted": [
+          "battery.level.v1",
+          "battery.pack-temperature.v1",
+          "battery.charge-state.v1",
+          "accelerometer.xyz.v1",
+          "network.state.v1",
+          "signal.read.v1"
+        ]
+      }
+    },
+    {
+      "id": "observation.t1-missing-sample",
+      "file": "invalid/semantic/observation-t1-missing-sample.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "missing-capability",
+      "context": {
+        "accepted": [
+          "battery.level.v1",
+          "battery.pack-temperature.v1",
+          "battery.charge-state.v1",
+          "accelerometer.xyz.v1",
+          "network.state.v1",
+          "signal.read.v1"
+        ]
+      }
+    },
+    {
+      "id": "session-open-response.accepted-not-subset",
+      "file": "invalid/semantic/session-open-response-accepted-not-subset.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "accepted-not-subset",
+      "context": {
+        "offered": [
+          "battery.level.v1",
+          "battery.pack-temperature.v1",
+          "battery.voltage.v1",
+          "battery.charge-state.v1",
+          "accelerometer.xyz.v1",
+          "proximity.state.v1",
+          "network.state.v1"
+        ]
+      }
+    },
+    {
+      "id": "ack.wrong-session",
+      "file": "invalid/semantic/ack-wrong-session.json",
+      "schema": "ack",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "ack-session-mismatch",
+      "context": {
+        "observation": "valid/observation.json"
+      }
+    },
+    {
+      "id": "ack.wrong-seq",
+      "file": "invalid/semantic/ack-wrong-seq.json",
+      "schema": "ack",
+      "expect": "invalid",
+      "layer": "semantic",
+      "violation": "ack-seq-mismatch",
+      "context": {
+        "observation": "valid/observation.json"
+      }
+    },
+    {
+      "id": "observation.duplicate-key",
+      "file": "raw/observation-duplicate-key.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "duplicate-json-key",
+      "violation": "duplicate-json-key"
+    },
+    {
+      "id": "observation.prototype-keys",
+      "file": "raw/observation-prototype-keys.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "prototype-key",
+      "violation": "prototype-key"
+    },
+    {
+      "id": "observation.invalid-utf8",
+      "file": "raw/observation-invalid-utf8.bin",
+      "schema": null,
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "invalid-utf8",
+      "violation": "invalid-utf8"
+    },
+    {
+      "id": "observation.body-limit-exact",
+      "file": "raw/observation-body-limit-exact.json",
+      "schema": "observation",
+      "expect": "valid",
+      "layer": "raw",
+      "check": "body-at-limit"
+    },
+    {
+      "id": "observation.body-limit-plus-one",
+      "file": "raw/observation-body-limit-plus-one.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "body-too-large",
+      "violation": "body-too-large"
+    },
+    {
+      "id": "observation.depth-too-deep",
+      "file": "raw/observation-depth-too-deep.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "depth-too-deep",
+      "violation": "depth-too-deep"
+    },
+    {
+      "id": "observation.unsafe-integer-literal",
+      "file": "raw/observation-unsafe-integer-literal.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "unsafe-integer-literal",
+      "violation": "unsafe-integer"
+    },
+    {
+      "id": "observation.non-finite",
+      "file": "raw/observation-non-finite.json",
+      "schema": "observation",
+      "expect": "invalid",
+      "layer": "raw",
+      "check": "non-finite-number",
+      "violation": "non-finite-number"
+    },
+    {
+      "id": "session-open-response.zero-interval",
+      "file": "invalid/schema/session-open-response-zero-interval.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-timing"
+    },
+    {
+      "id": "session-open-response.invalid-timeout",
+      "file": "invalid/schema/session-open-response-invalid-timeout.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-timing"
+    },
+    {
+      "id": "session-open-response.unsafe-interval",
+      "file": "invalid/schema/session-open-response-unsafe-interval.json",
+      "schema": "sessionOpenResponse",
+      "expect": "invalid",
+      "layer": "schema",
+      "violation": "invalid-timing"
+    }
+  ]
+}

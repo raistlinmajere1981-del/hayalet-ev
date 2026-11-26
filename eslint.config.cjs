@@ -308,7 +308,7 @@ module.exports = tseslint.config(
 
   // === TypeScript Utility Scripts ===
   {
-    files: ["scripts/**/*.ts"],
+    files: ["scripts/**/*.ts", "gaia-protocol/**/*.ts"],
     extends: [...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",

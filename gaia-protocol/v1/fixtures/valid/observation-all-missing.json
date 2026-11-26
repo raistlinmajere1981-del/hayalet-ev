@@ -1,0 +1,57 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "seq": 5,
+  "sentMonoMs": 1817000,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "battery.level.v1",
+      "quality": "missing",
+      "unit": "%",
+      "value": null
+    },
+    {
+      "id": "battery.pack-temperature.v1",
+      "quality": "missing",
+      "unit": "°C",
+      "value": null
+    },
+    {
+      "id": "battery.voltage.v1",
+      "quality": "missing",
+      "unit": "mV",
+      "value": null
+    },
+    {
+      "id": "battery.charge-state.v1",
+      "quality": "missing",
+      "unit": "1",
+      "value": null
+    },
+    {
+      "id": "accelerometer.xyz.v1",
+      "quality": "missing",
+      "unit": "m/s²",
+      "value": null
+    },
+    {
+      "id": "proximity.state.v1",
+      "quality": "missing",
+      "unit": "1",
+      "value": null
+    },
+    {
+      "id": "network.state.v1",
+      "quality": "missing",
+      "unit": "1",
+      "value": null
+    },
+    {
+      "id": "signal.read.v1",
+      "quality": "missing",
+      "unit": "dBm",
+      "value": null
+    }
+  ]
+}

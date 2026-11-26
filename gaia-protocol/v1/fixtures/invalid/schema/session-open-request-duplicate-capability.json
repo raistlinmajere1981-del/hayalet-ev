@@ -1,0 +1,8 @@
+{
+  "v": 1,
+  "projectId": "sera",
+  "deviceId": "client-1",
+  "installationId": "5f86a875-96ee-48d4-868a-72d18645fabb",
+  "runId": "ffd55103-4beb-494d-8a86-02665d15a3db",
+  "offered": ["battery.level.v1", "battery.level.v1"]
+}

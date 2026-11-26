@@ -1,0 +1,62 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "seq": 22,
+  "sentMonoMs": 1815000,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "battery.level.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "%",
+      "value": 83
+    },
+    {
+      "id": "battery.pack-temperature.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "°C",
+      "value": 19.9
+    },
+    {
+      "id": "battery.voltage.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "mV",
+      "value": 4312
+    },
+    {
+      "id": "battery.charge-state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": "charging"
+    },
+    {
+      "id": "accelerometer.xyz.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "m/s²",
+      "value": [0, 0, 9.8]
+    },
+    {
+      "id": "proximity.state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": "far"
+    },
+    {
+      "id": "network.state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": {
+        "transport": "none",
+        "internetCapable": false,
+        "validated": false
+      }
+    }
+  ]
+}

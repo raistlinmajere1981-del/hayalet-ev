@@ -94,6 +94,7 @@ const root = {
     "ghost-agent/**/*.{js,cjs,ts,d.ts}",
     "rooms/**/*.{js,ts,d.ts}",
     "scripts/**/*.{js,mjs,ts}",
+    "gaia-protocol/**/*.ts",
     "*.config.{js,cjs,ts}",
   ],
 };
@@ -143,6 +144,9 @@ const config: KnipConfig = {
 
     // Script helpers — shared library files for the script CLI system
     "scripts/**/*.{js,mjs}": ["exports", "types"],
+
+    // Gaia wire contract — public schema/types consumed by future B2/B4/B6/B7 and Android
+    "gaia-protocol/**/*.ts": ["exports", "types"],
 
     // Electron internals — logger/capture/provider-tester used dynamically via IPC, CDP, or packaging
     "electron/**/*.{ts,cjs}": ["exports", "types"],

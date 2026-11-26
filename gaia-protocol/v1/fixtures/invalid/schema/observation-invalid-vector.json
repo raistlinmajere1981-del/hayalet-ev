@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "seq": 10,
+  "sentMonoMs": 1814000,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "accelerometer.xyz.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1813000,
+      "unit": "m/s²",
+      "value": [0, 0]
+    }
+  ]
+}

@@ -11,6 +11,7 @@ tmp/
 temp/
 .vite/
 protocol/
+gaia-protocol/v1/fixtures/raw/
 *.min.js
 *.tsbuildinfo
 package-lock.json

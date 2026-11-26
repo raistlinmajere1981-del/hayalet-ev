@@ -1,0 +1,48 @@
+{
+  "v": 1,
+  "sessionId": "3f1c8b2a-7d4e-4a61-9b2f-6c5d8e0a1b23",
+  "seq": 3,
+  "sentMonoMs": 1817000,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "battery.level.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "%",
+      "value": 83
+    },
+    {
+      "id": "battery.pack-temperature.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "°C",
+      "value": 19.9
+    },
+    {
+      "id": "battery.charge-state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": "charging"
+    },
+    {
+      "id": "accelerometer.xyz.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "m/s²",
+      "value": [-0.09, -0.47, 9.68]
+    },
+    {
+      "id": "network.state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": {
+        "transport": "wifi",
+        "internetCapable": true,
+        "validated": true
+      }
+    }
+  ]
+}

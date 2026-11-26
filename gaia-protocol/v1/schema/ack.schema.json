@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": { "type": "number", "const": 1 },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"
+    },
+    "seq": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "acceptedAt": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+  },
+  "required": ["v", "sessionId", "seq", "acceptedAt"],
+  "additionalProperties": false,
+  "title": "Gaia v1 observation ACK",
+  "description": "HTTP 200 response for one observation packet. Session and seq must match the packet."
+}

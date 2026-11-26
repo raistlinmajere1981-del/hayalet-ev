@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "accepted": ["battery.level.v1", "signal.read.v1"],
+  "intervalMs": 10000,
+  "timeoutMs": 35000
+}

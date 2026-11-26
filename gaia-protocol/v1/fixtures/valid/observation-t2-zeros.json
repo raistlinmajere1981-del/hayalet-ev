@@ -1,0 +1,67 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "seq": 2,
+  "sentMonoMs": 1815000,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "battery.level.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "%",
+      "value": 0
+    },
+    {
+      "id": "accelerometer.xyz.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "m/s²",
+      "value": [0, 0, 0]
+    },
+    {
+      "id": "network.state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": {
+        "transport": "none",
+        "internetCapable": false,
+        "validated": false
+      }
+    },
+    {
+      "id": "battery.charge-state.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "1",
+      "value": "full"
+    },
+    {
+      "id": "signal.read.v1",
+      "quality": "missing",
+      "unit": "dBm",
+      "value": null
+    },
+    {
+      "id": "battery.voltage.v1",
+      "quality": "invalid",
+      "sampleMonoMs": 1814000,
+      "unit": "mV",
+      "value": null
+    },
+    {
+      "id": "proximity.state.v1",
+      "quality": "missing",
+      "unit": "1",
+      "value": null
+    },
+    {
+      "id": "battery.pack-temperature.v1",
+      "quality": "valid",
+      "sampleMonoMs": 1814000,
+      "unit": "°C",
+      "value": 20.1
+    }
+  ]
+}

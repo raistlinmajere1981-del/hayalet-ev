@@ -1,0 +1,38 @@
+{
+  "v": 1,
+  "capabilities": [
+    { "id": "battery.level.v1", "unit": "%", "valueType": "integer", "minimum": 0, "maximum": 100 },
+    { "id": "battery.pack-temperature.v1", "unit": "°C", "valueType": "number" },
+    {
+      "id": "battery.voltage.v1",
+      "unit": "mV",
+      "valueType": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    {
+      "id": "battery.charge-state.v1",
+      "unit": "1",
+      "valueType": "string",
+      "enumValues": ["charging", "discharging", "full", "not_charging"]
+    },
+    { "id": "accelerometer.xyz.v1", "unit": "m/s²", "valueType": "vector3", "length": 3 },
+    {
+      "id": "proximity.state.v1",
+      "unit": "1",
+      "valueType": "string",
+      "enumValues": ["near", "far"]
+    },
+    {
+      "id": "network.state.v1",
+      "unit": "1",
+      "valueType": "object",
+      "fields": {
+        "transport": ["none", "wifi", "cellular", "other"],
+        "internetCapable": "boolean",
+        "validated": "boolean"
+      }
+    },
+    { "id": "signal.read.v1", "unit": "dBm", "valueType": "integer", "minimum": -126, "maximum": 0 }
+  ]
+}

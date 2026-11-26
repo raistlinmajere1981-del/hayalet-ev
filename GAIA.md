@@ -1,6 +1,6 @@
 # Gaia Room
 
-> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. 03-A/1 donanım incelemesi ve 03-A/2 rootsuz Android telemetri fizibilitesi kabul edildi; 03-A/3 saha kontratı tasarım olarak kabul edildi; sıradaki 03-B1 ortak tel kontratı ve fixture'ları. [Gaia mimarisi](GAIA-ARCHITECTURE.md) · [Saha protokolü ve 03-B paketleri](GAIA-CLIENT-PROTOCOL.md)
+> **Durum** — 02-B/1 Linux kapsamında, 02-B/2 gerçek arazi kullanımıyla, 02-C günlük cihaz yönetimi Linux kapsamında kabul edildi. 02-D/1 durum yaşam döngüsü, 02-D/2 değişim eksenleri ve 02-D/3 bağımsız kapanış denetimi (tam kalite zinciri, çevrimdışı Electron/paket, görünür 3B performans ve 03 Client hazırlık incelemesi) tamamlandı; iki P1 düzeltmesi doğrulandı ve 02 milestone'u Linux kapsamında kabul edildi. 03-A/1 donanım incelemesi ve 03-A/2 rootsuz Android telemetri fizibilitesi kabul edildi; 03-A/3 saha kontratı tasarım olarak kabul edildi; 03-B1 ortak tel kontratı ve fixture'ları kabul edildi; 03-B2 son durum modeli sıradaki. [Gaia mimarisi](GAIA-ARCHITECTURE.md) · [Saha protokolü ve 03-B paketleri](GAIA-CLIENT-PROTOCOL.md)
 
 Referans uygulama commit'i: `d0e47947` (Hayalet Ev 5.4.0). Bu belge Gaia için mimari karar, proje hafızası, araştırma özeti, açık konular ve geliştirme planının tek başlangıç kaynağıdır. Hayalet Ev’de Gaia projeleri Genel Görünüm’de açılır ve Modelleme Atölyesi’nde düzenlenir.
 
@@ -163,7 +163,7 @@ Fiziksel kontrol öncesi komut yetkisi, izinli eylem, önkoşul, süre sonu, ide
 | 02-B       | 02-B/1 ve 02-B/2 kabul              | Modelleme Atölyesi, kalibrasyon, düzenleme ve ölçüm                                         |
 | 02-C       | Tamamlandı (Linux)                  | Günlük genel görünüm, hiyerarşik gezinme ve sanal cihazlar                                  |
 | 02-D       | Tamamlandı (Linux)                  | Kullanılabilirlik, performans, paket/lisans ve mimari audit                                 |
-| 03         | 03-A kabul; 03-B1 sıradaki          | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
+| 03         | 03-A ve B1 kabul; B2 sıradaki       | Bağımsız Client, gerçek/sanal gözlem ve cihaz yetenekleri                                   |
 | 04         | Bekliyor                            | Router, saha ağı ve Companion yönetimi                                                      |
 | 05         | Bekliyor                            | Elektronik ve deterministik otomasyon; güvenli test düzeneği                                |
 | 06         | Bekliyor                            | Yerel AI0/AI1 entegrasyonu; doğrulanmış araçlar ve kaynak tüketimi                          |
@@ -505,6 +505,18 @@ Taban `2dd0bdf2`. Hedef cihaz SM-J701F (Android 9, API 28, armeabi-v7a). SM-J700
 `708072cb` tabanındaki kaynak incelemesiyle hazırlanan kontrat tasarım olarak kabul edildi. İlk fiziksel Client, yönetici tarafından bağlanan tek proje ve cihaz adına salt okunur telemetri gönderir. Android saati sertifika doğrulamasına elvermiyorsa kurulumda düzeltilir. Ölçümün yaşı, sensörün monotonik örnek zamanı ve merkezi teslim süresiyle sınırlandırılır. Main alıcısı, oda görünürlüğünden bağımsız çalışır ve mevcut proje kilidi altında yalnız son durumu yayımlar. Renderer güncellemesi `simulated` ile sınırlıdır. Sonraki uygulama paketleri, bağımlılıkları ve ölçülebilir çıkış koşulları saha kontratındadır. [03-A/3 kontratı ve 03-B kabul matrisi](GAIA-CLIENT-PROTOCOL.md)
 
 **03-A/3 bağımsız kabul (Nexa):** Codex/Astra xhigh tarafından hazırlanan saha kontratının tamamı, mevcut capability, durum ve tek yazıcı kaynaklarıyla karşılaştırıldı. HTTPS/mTLS, ayrı fiziksel ingest, yerel eşleme/iptal, monotonik örnek zamanı ve sekiz uygulama paketi tasarım düzeyinde kabul edildi. Monotonik kabul çıpası, UI tazelik bütçesi, iptal görünümü ve B1 ham gövde/şema doğrulama sınırları netleştirildi. B3/B6 öncesi CA ve güvenli yerel aktarım kararları açık kapıdır; J701F gerçek mTLS, RSSI ve güç deneyleri henüz yapılmadı. İlk B1 dar uygulama görevi DeepSeek'e uygun; B2–B8 ayrı kabul edilecek. Bu tur üretim kodu, telefon ayarı veya gerçek proje verisi değiştirilmedi.
+
+### 03-B1 — Ortak tel kontratı ve fixture'lar
+
+`238e7248` tabanında `gaia-protocol/v1/` altında B1 dilimi uygulandı. Tek otorite `src/schema.ts` içindeki zod şemalarıdır; Android ve TypeScript tarafı için draft 2020-12 JSON Schema ve `capabilities.json` aynı kaynaktan üretilir. `src/semantics.ts` yalnız şema dışı bağlam/alan kontrolleri için referans yardımcıları içerir; oturum durum makinesi değildir. Kullanım ve katman sınırları `gaia-protocol/README.md` içinde belgelendi.
+
+Kapsam: oturum açma isteği/yanıtı, gözlem/heartbeat, ACK ve hata gövdeleri; sekiz capability için valid/invalid/missing örnekleri; sıfır, false, negatif RSSI, kapalı enum, XYZ vektörü ve ağ nesnesi; batarya paket sıcaklığının ortam sıcaklığından ayrı tutulması. `fixtures/manifest.json` 64 vakayı `schema`, `semantic` ve `raw` katmanlarına ayırır. Ham fixture'lar UTF-8 hatası, yinelenen anahtar, prototip anahtarı, 16 KiB gövde sınırı, derinlik 5, güvenli tamsayı taşması ve `1e400`/sonsuzluk vakalarını ayrıştırma sonrası gizlenmeyecek şekilde bayt olarak korur. T1 kesişim ve T2 sıfır/kalite senaryoları `scenarios/` altındadır.
+
+Doğrulama: `npm run gaia-protocol:test` 11/11 geçti; `tsc --noEmit -p scripts/tsconfig.json`, yeni dizin üzerinde ESLint `--max-warnings 0` ve Prettier `--check` temiz. Şema üreticisi Prettier biçimini koruyacak şekilde çalışır; `test:all`, format/lint/typecheck ve knip kapsamına yeni dizin bağlandı. Tam kalite zinciri, commit ve push bu kabul turunda çalıştırılmadı.
+
+Şema dışı yükümlülükler B2/B4/B6/B7'de kalır: kabul edilen küme ve örnek bağlamı, seq/ACK/tekrar, ham UTF-8/yinelenen anahtar/gövde-derinlik sınırları, mTLS yetkisi, tek yazıcı ve atomik yayın. B1 genel parser veya ağ framework'ü eklemez.
+
+**Bağımsız kabul (Nexa):** Kaynak, üretilmiş şemalar, fixture manifesti ve test zinciri incelendi. 10 s / 35 s başlangıç v1 profili sabitlenip üç negatif zamanlama fixture'ı eklendi (64 vaka); örnek değerlerinin TypeScript çıkarımı korundu. Ham fixture dizini Git metin dönüşümünden muaf tutuldu. Son hedefli koşum 11/11 geçti. Android ve bağımsız JSON Schema motorunda eşdeğer doğrulama, ham ağ parser'ı, yetkilendirme ve uçtan uca güvenlik henüz kabul edilmedi. Tam kalite zinciri bu turda yeniden koşulmadı. B2 atomik measured snapshot, v3 yan dosya ve mevcut simulated regresyonlarına odaklanır.
 
 ## 11. Açık konular / sonraki session
 

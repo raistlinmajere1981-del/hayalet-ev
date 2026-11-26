@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "seq": 11,
+  "sentMonoMs": -1,
+  "deviceWallMs": 1795647910000,
+  "samples": [
+    {
+      "id": "battery.level.v1",
+      "quality": "valid",
+      "sampleMonoMs": 0,
+      "unit": "%",
+      "value": 83
+    }
+  ]
+}

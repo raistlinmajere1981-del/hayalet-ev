@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": { "type": "number", "const": 1 },
+    "sessionId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"
+    },
+    "seq": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "sentMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "deviceWallMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "samples": {
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.level.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "%" },
+                  "value": { "type": "integer", "minimum": 0, "maximum": 100 }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.level.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "%" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.level.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "%" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.pack-temperature.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "°C" },
+                  "value": { "type": "number" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.pack-temperature.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "°C" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.pack-temperature.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "°C" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.voltage.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "mV" },
+                  "value": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.voltage.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "mV" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.voltage.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "mV" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.charge-state.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": {
+                    "type": "string",
+                    "enum": ["charging", "discharging", "full", "not_charging"]
+                  }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.charge-state.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "battery.charge-state.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "accelerometer.xyz.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "m/s²" },
+                  "value": {
+                    "type": "array",
+                    "prefixItems": [
+                      { "type": "number" },
+                      { "type": "number" },
+                      { "type": "number" }
+                    ]
+                  }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "accelerometer.xyz.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "m/s²" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "accelerometer.xyz.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "m/s²" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "proximity.state.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "string", "enum": ["near", "far"] }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "proximity.state.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "proximity.state.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "network.state.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "transport": { "type": "string", "const": "none" },
+                          "internetCapable": { "type": "boolean", "const": false },
+                          "validated": { "type": "boolean", "const": false }
+                        },
+                        "required": ["transport", "internetCapable", "validated"],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "transport": { "type": "string", "enum": ["wifi", "cellular", "other"] },
+                          "internetCapable": { "type": "boolean" },
+                          "validated": { "type": "boolean" }
+                        },
+                        "required": ["transport", "internetCapable", "validated"],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "network.state.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "network.state.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "1" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "signal.read.v1" },
+                  "quality": { "type": "string", "const": "valid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "dBm" },
+                  "value": { "type": "integer", "minimum": -126, "maximum": 0 }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "signal.read.v1" },
+                  "quality": { "type": "string", "const": "invalid" },
+                  "sampleMonoMs": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                  "unit": { "type": "string", "const": "dBm" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "sampleMonoMs", "unit", "value"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "const": "signal.read.v1" },
+                  "quality": { "type": "string", "const": "missing" },
+                  "unit": { "type": "string", "const": "dBm" },
+                  "value": { "type": "null" }
+                },
+                "required": ["id", "quality", "unit", "value"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "required": ["v", "sessionId", "seq", "sentMonoMs", "deviceWallMs", "samples"],
+  "additionalProperties": false,
+  "title": "Gaia v1 observation packet",
+  "description": "POST /gaia/v1/observations. Every accepted capability appears once; an empty array is a heartbeat."
+}

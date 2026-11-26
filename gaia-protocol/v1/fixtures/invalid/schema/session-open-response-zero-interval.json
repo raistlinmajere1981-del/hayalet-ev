@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "sessionId": "ab7d90f6-124b-487a-a512-2441b5540978",
+  "accepted": [
+    "battery.level.v1",
+    "battery.pack-temperature.v1",
+    "battery.voltage.v1",
+    "battery.charge-state.v1",
+    "accelerometer.xyz.v1",
+    "proximity.state.v1",
+    "network.state.v1",
+    "signal.read.v1"
+  ],
+  "intervalMs": 0,
+  "timeoutMs": 35000
+}

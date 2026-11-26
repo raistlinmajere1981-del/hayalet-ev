@@ -1,0 +1,14 @@
+{
+  "id": "T2",
+  "validPacket": "valid/observation-t2-zeros.json",
+  "rejected": [
+    "observation.wrong-unit",
+    "observation.wrong-value-type",
+    "observation.invalid-vector",
+    "observation.proximity-distance",
+    "observation.non-finite",
+    "observation.unsafe-integer-literal",
+    "observation.ambient-capability",
+    "observation.pack-temperature-ambient-object"
+  ]
+}

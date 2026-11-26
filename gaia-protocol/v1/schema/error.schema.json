@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "v": { "type": "number", "const": 1 },
+    "error": {
+      "type": "string",
+      "enum": [
+        "invalid_packet",
+        "media_type",
+        "too_large",
+        "not_authorized",
+        "session_expired",
+        "session_busy",
+        "sequence_conflict",
+        "rate_limited",
+        "unavailable"
+      ]
+    }
+  },
+  "required": ["v", "error"],
+  "additionalProperties": false,
+  "title": "Gaia v1 error response",
+  "description": "Error body. Retry-After stays in HTTP headers and is not part of this body."
+}
