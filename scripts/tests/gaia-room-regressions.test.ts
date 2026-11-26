@@ -8,3 +8,4 @@ import "../../rooms/gaia-room/scripts/tests/physical.test.ts";
 import "../../rooms/gaia-room/scripts/tests/enrollment.test.ts";
 import "../../rooms/gaia-room/scripts/tests/certificates.test.ts";
 import "../../rooms/gaia-room/scripts/tests/restore.test.ts";
+import "../../rooms/gaia-room/scripts/tests/session.test.ts";
