@@ -1,7 +1,11 @@
 <script lang="ts">
   import type en from "../../../i18n/en.json";
   import { capabilityOf, type CapabilityId } from "../../devices/capabilities.ts";
-  import { observationFreshness, type DeviceStatus } from "../../devices/status.ts";
+  import {
+    observationFreshness,
+    type DeviceStatus,
+    type ObservationValue,
+  } from "../../devices/status.ts";
 
   let {
     capabilities,
@@ -29,6 +33,16 @@
     new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "medium" })
   );
   const number = $derived(new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }));
+
+  function readingText(value: ObservationValue, unit: string): string {
+    if (typeof value === "number") return `${number.format(value)} ${unit}`;
+    if (typeof value === "boolean") return value ? labels.valueOn : labels.valueOff;
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) return `${value.map((part) => number.format(part)).join(", ")} ${unit}`;
+    if (value && typeof value === "object")
+      return `${value.transport} · ${value.internetCapable ? labels.internet : labels.noInternet} · ${value.validated ? labels.validated : labels.notValidated}`;
+    return "";
+  }
 </script>
 
 {#if observable.length}
@@ -42,11 +56,7 @@
             <strong>{labels[capability as CapabilityId]}</strong>
             {#if reading?.quality === "valid"}
               <span class="reading">
-                {typeof reading.value === "number"
-                  ? number.format(reading.value) + " " + reading.unit
-                  : reading.value
-                    ? labels.valueOn
-                    : labels.valueOff}
+                {readingText(reading.value, reading.unit)}
               </span>
             {/if}
           </div>
@@ -56,7 +66,7 @@
             {labels[freshness]}
             {#if reading}
               · {reading.source === "simulated" ? labels.virtual : labels.measured}
-              {#if detailed}
+              {#if detailed && reading.at !== undefined}
                 · <time datetime={new Date(reading.at).toISOString()}>
                   {time.format(reading.at)}
                 </time>

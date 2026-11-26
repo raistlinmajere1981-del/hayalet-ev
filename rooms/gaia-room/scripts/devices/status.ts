@@ -4,16 +4,59 @@ import type { Device, Id, World } from "../spatial/world.ts";
 export const freshForMs = 60_000;
 export type Connection = "online" | "offline" | "unknown" | "unbound";
 type Source = "simulated" | "measured";
-type Quality = "valid" | "invalid";
+type Quality = "valid" | "invalid" | "missing";
 export type Freshness = "fresh" | "stale" | "noData";
 
+export interface NetworkState {
+  transport: "none" | "wifi" | "cellular" | "other";
+  internetCapable: boolean;
+  validated: boolean;
+}
+
+export type ObservationValue =
+  number | boolean | string | [number, number, number] | NetworkState | null;
+
 export interface Observation {
-  at: number;
+  // Simulated readings carry the wall time supplied by the virtual input. Measured
+  // readings derive this display estimate from the first accepted age upper bound.
+  at?: number;
   receivedAt: number;
-  value: number | boolean | null;
+  value: ObservationValue;
   unit: string;
   source: Source;
   quality: Quality;
+  // Measured evidence only. Monotonic acceptance fields are RAM-only and never serialized.
+  sampleMonoMs?: number;
+  sentMonoMs?: number;
+  ageUpperMs?: number;
+  acceptedMonoMs?: number;
+}
+
+// Session ordering memory survives missing views. It is persisted so a later packet cannot
+// use a missing gap to overwrite an older sample; acceptedMonoMs stays in RAM.
+export interface MeasuredOrder {
+  sampleMonoMs: number;
+  quality: "valid" | "invalid";
+  value: ObservationValue;
+  unit: string;
+  receivedAt: number;
+  at?: number;
+  sentMonoMs?: number;
+  ageUpperMs?: number;
+  acceptedMonoMs?: number;
+}
+
+export interface MeasuredContext {
+  installationId: string;
+  authorizationGeneration: number;
+  runId: string;
+  sessionId: string;
+  seq: number;
+  sentMonoMs: number;
+  deviceWallMs: number;
+  acceptedAt: number;
+  acceptedMonoMs?: number;
+  order?: Record<string, MeasuredOrder>;
 }
 
 export interface DeviceStatus {
@@ -22,6 +65,7 @@ export interface DeviceStatus {
   link?: { state: "online" | "offline"; at: number };
   lastContactAt?: number;
   lastOfflineAt?: number;
+  measured?: MeasuredContext;
   observations: Record<string, Observation>;
 }
 
@@ -37,7 +81,7 @@ export type StatusInput =
       kind: "observation";
       capability: string;
       at: number;
-      quality: Quality;
+      quality: "valid" | "invalid";
       value: number | boolean | null;
       unit: string;
     };
@@ -79,7 +123,21 @@ export function activeStatuses(world: World, current: DeviceStatuses): DeviceSta
           device.capabilities.includes(capability)
         )
       );
-      return [[id, { ...status, observations }]];
+      // Removed capabilities must not leave ordering memory behind: re-adding one later
+      // cannot revive a view that the inventory no longer declares.
+      const order = status.measured?.order;
+      const measured =
+        status.measured === undefined || order === undefined
+          ? status.measured
+          : {
+              ...status.measured,
+              order: Object.fromEntries(
+                Object.entries(order).filter(([capability]) =>
+                  device.capabilities.includes(capability)
+                )
+              ),
+            };
+      return [[id, { ...status, ...(measured === undefined ? {} : { measured }), observations }]];
     })
   );
 }
@@ -121,10 +179,13 @@ export function recordStatus(
   }
   const { at, capability, quality, unit, value } = update;
   const definition = typeof capability === "string" ? capabilityOf(capability) : undefined;
+  const scalar = definition?.kind === "number" || definition?.kind === "boolean";
+  const physical = definition !== undefined && "physical" in definition && definition.physical;
   if (
     !device.capabilities.includes(capability) ||
     !definition ||
-    definition.kind === "media" ||
+    !scalar ||
+    physical ||
     unit !== definition.unit ||
     !Number.isSafeInteger(at) ||
     at <= 0 ||
@@ -136,7 +197,11 @@ export function recordStatus(
     throw new Error("Invalid Gaia observation");
 
   const previous = status.observations[capability];
-  if (previous && (previous.receivedAt > receivedAt || (source === "measured" && previous.at > at)))
+  if (
+    previous &&
+    (previous.receivedAt > receivedAt ||
+      (source === "measured" && previous.at !== undefined && previous.at > at))
+  )
     return current;
   return {
     ...current,
@@ -158,12 +223,45 @@ export function connection(device: Device, status?: DeviceStatus): Connection {
   return status?.link?.state ?? "unknown";
 }
 
+// Measured freshness needs a live central monotonic anchor. Without one (restart, sidecar
+// read, or a B4 session that has not supplied a clock) the record is last-known/stale.
+export function measuredFreshness(
+  status: DeviceStatus | undefined,
+  reading: Observation | undefined,
+  monoMs?: number
+): Freshness {
+  if (!reading || reading.quality === "missing") return "noData";
+  if (status?.link?.state === "offline") return "stale";
+  // A reconnect cannot make a reading that was first accepted before the last offline
+  // transition fresh again; only evidence accepted after it can.
+  if (status?.lastOfflineAt !== undefined && reading.receivedAt <= status.lastOfflineAt)
+    return "stale";
+  if (
+    reading.source !== "measured" ||
+    reading.ageUpperMs === undefined ||
+    reading.acceptedMonoMs === undefined ||
+    monoMs === undefined ||
+    !Number.isSafeInteger(reading.ageUpperMs) ||
+    !Number.isSafeInteger(reading.acceptedMonoMs) ||
+    !Number.isSafeInteger(monoMs)
+  )
+    return "stale";
+  const elapsed = monoMs - reading.acceptedMonoMs;
+  if (elapsed < 0) return "stale";
+  const age = reading.ageUpperMs + elapsed;
+  if (!Number.isSafeInteger(age)) return "stale";
+  return age < freshForMs ? "fresh" : "stale";
+}
+
 export function observationFreshness(
   status: DeviceStatus | undefined,
   reading: Observation | undefined,
-  now: number
+  now: number,
+  monoMs?: number
 ): Freshness {
-  if (!reading) return "noData";
+  if (!reading || reading.quality === "missing") return "noData";
+  if (reading.source === "measured") return measuredFreshness(status, reading, monoMs);
+  if (reading.at === undefined) return "stale";
   if (
     status?.link?.state === "offline" ||
     reading.at <= (status?.lastOfflineAt ?? 0) ||
@@ -178,7 +276,8 @@ export type DeviceHealth = Connection | Freshness | "invalid";
 export function deviceHealth(
   device: Device,
   status: DeviceStatus | undefined,
-  now: number
+  now: number,
+  monoMs?: number
 ): DeviceHealth {
   const link = connection(device, status);
   if (link === "offline" || link === "unbound") return link;
@@ -188,8 +287,13 @@ export function deviceHealth(
   });
   const observations = readable.map((id) => status?.observations[id]);
   if (observations.some((reading) => reading?.quality === "invalid")) return "invalid";
-  if (observations.some((reading) => observationFreshness(status, reading, now) === "stale"))
+  if (
+    observations.some(
+      (reading) => reading && observationFreshness(status, reading, now, monoMs) === "stale"
+    )
+  )
     return "stale";
+  if (observations.some((reading) => reading?.quality === "missing")) return "noData";
   if (link === "online" && observations.some((reading) => !reading)) return "noData";
   return link;
 }

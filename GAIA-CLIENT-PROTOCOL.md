@@ -272,6 +272,8 @@ Aşağıdaki yollar yeni modüller için önerilen sahiplik sınırlarıdır. He
 
 **B1 uygulama sınırı:** Ortak tel şeması ve iki dilin kullanabileceği pozitif/negatif fixture'lar tek otoriteden üretilecek. JSON şemasının nesneye ayrıştırma öncesi yinelenen anahtarı, UTF-8 hatasını, ham bayt sınırını veya oturum bağlamını tek başına doğruladığı varsayılmaz. Bunlar için ham gövde fixture'ları ve B4/B6/B7'ye açık doğrulama yükümlülüğü bulunur. Yeni genel parser veya ağ framework'ü B1'in hedefi değildir. Test girişleri mevcut kalite zincirine bağlanır; kökteki yeni dizinin format/type/test kapsamına kendiliğinden girdiği varsayılmaz.
 
+**B2 kabul sınırı:** `projectPhysicalSnapshot(dir, world, epoch, input, previousLive?)` son başarılı cihaz satırının RAM kanıtını açıkça alır. `PhysicalLiveProof.identity` güncel envanter/epoch ile ve canlı satırın kalıcı izdüşümü disk satırıyla eşleşmelidir. B4 bu kanıtı yalnız başarılı yayından sonra günceller, oturum veya epoch değişince bırakır. İlk pakette önceki kanıt kullanılmaz; aynı kayıtlı oturum canlı kanıt olmadan sürdürülemez. B4/B7 sıralama, ilk seq=1, yetki, epoch, timeout ve ACK tekrarını ayrıca doğrular. Bu API gizli global durum önbelleği oluşturmaz. UI okuma sırasında canlı kanıt birleştirme ve monotonik kalan süre B7/B8 işidir.
+
 ### Pozitif ve negatif kabul senaryoları
 
 | ID  | Deney                                                                                                                                                                                                | Beklenen sonuç                                                                                                                                                                                                 |

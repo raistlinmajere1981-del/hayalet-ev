@@ -306,7 +306,7 @@ test("a legacy status sidecar without a device identity is not trusted as curren
   await status({ ...temperature, deviceId: id, value: 24, at: Date.now() });
   assert.equal((await status()).statuses[id]?.observations[temperature.capability]?.value, 24);
   const upgraded = JSON.parse(await readFile(statusPath, "utf8")) as { schemaVersion: number };
-  assert.equal(upgraded.schemaVersion, 2);
+  assert.equal(upgraded.schemaVersion, 3);
 });
 
 test("renderer status snapshots are bound to the reconciled world revision", () => {

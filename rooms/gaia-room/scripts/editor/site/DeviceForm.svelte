@@ -3,6 +3,7 @@
   import type en from "../../../i18n/en.json";
   import {
     capabilities,
+    capabilityOf,
     deviceRoles,
     type CapabilityId,
     type DeviceRole,
@@ -36,8 +37,13 @@
     untrack(() => device?.roles ?? [device?.role ?? "sensor"])
   );
   let selectedCapabilities = $state<string[]>(untrack(() => device?.capabilities ?? []));
+  function available(capability: string): boolean {
+    const definition = capabilityOf(capability);
+    if (!definition || !("physical" in definition) || !definition.physical) return true;
+    return device?.source === "physical" || (!device && source === "physical");
+  }
   const capabilityOptions = $derived([
-    ...Object.keys(capabilities),
+    ...Object.keys(capabilities).filter(available),
     ...(device?.capabilities.filter((capability) => !Object.hasOwn(capabilities, capability)) ??
       []),
   ]);

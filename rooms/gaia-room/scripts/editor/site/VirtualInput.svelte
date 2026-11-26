@@ -23,7 +23,13 @@
   const observable = $derived(
     capabilities.filter((key) => {
       const definition = capabilityOf(key);
-      return definition && definition.kind !== "media";
+      // Virtual input keeps the legacy scalar shape; measured-only field kinds are not
+      // editable here even if an inventory row happens to declare them.
+      return (
+        definition &&
+        (definition.kind === "number" || definition.kind === "boolean") &&
+        !("physical" in definition && definition.physical)
+      );
     })
   );
   let selected = $state("");
@@ -39,7 +45,9 @@
 
   function sample(event: SubmitEvent) {
     event.preventDefault();
-    if (disabled || !capability || !definition || definition.kind === "media") return;
+    if (disabled || !capability || !definition) return;
+    if (definition.kind !== "number" && definition.kind !== "boolean") return;
+    if ("physical" in definition && definition.physical) return;
     const raw = new FormData(event.currentTarget as HTMLFormElement).get("sample");
     const quality = sampleState === "invalid" ? "invalid" : "valid";
     const value =
@@ -68,7 +76,7 @@
     </label>
     <button type="submit" {disabled}>{labels.publishLink}</button>
   </form>
-  {#if definition && capability && definition.kind !== "media"}
+  {#if definition && capability}
     <form onsubmit={sample}>
       <label>
         {labels.capabilities}

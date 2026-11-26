@@ -68,7 +68,10 @@ export function nextFreshnessDeadline(statuses: DeviceStatuses, now: number): nu
   let next = Infinity;
   for (const status of Object.values(statuses))
     for (const observation of Object.values(status.observations))
-      if (observationFreshness(status, observation, now) === "fresh")
+      if (
+        observation.at !== undefined &&
+        observationFreshness(status, observation, now) === "fresh"
+      )
         next = Math.min(next, observation.at + freshForMs);
   return Number.isFinite(next) ? next : undefined;
 }

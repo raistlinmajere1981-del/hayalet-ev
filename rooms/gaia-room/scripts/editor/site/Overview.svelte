@@ -154,7 +154,12 @@
 {:else if device && selected}
   {@const id = selected}
   {@const link = connection(device, status)}
-  {@const last = Math.max(0, ...Object.values(status?.observations ?? {}).map(({ at }) => at))}
+  {@const last = Math.max(
+    0,
+    ...Object.values(status?.observations ?? {}).flatMap(({ at }) =>
+      at === undefined ? [] : [at]
+    )
+  )}
   <div class="object-heading" data-selected-id={id}>
     <p class="muted">
       {labels.device} · {device.source === "virtual" ? labels.virtual : labels.physical}
