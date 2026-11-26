@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">Gaia Client</string>
+    <string name="start">Başlat</string>
+    <string name="stop">Durdur</string>
+    <string name="status_idle">Servis durdu. Başlamak için Başlat\'a basın.</string>
+
+    <string name="notification_channel_name">Gaia Client toplama</string>
+    <string name="notification_channel_description">Yerel test oturumu için ön planda donanım toplama</string>
+    <string name="notification_title">Gaia Client</string>
+    <string name="notification_starting">Yerel toplama başlıyor…</string>
+    <string name="notification_running">Yerel test toplaması çalışıyor</string>
+    <string name="notification_stop">Durdur</string>
+
+    <string name="local_test_mode">Yerel test modu — merkez bağlantısı yok</string>
+    <string name="device_info">Cihaz: %1$s %2$s\nAndroid %3$s (API %4$d)\nABI: %5$s</string>
+    <string name="label_state">Servis</string>
+    <string name="state_running">Çalışıyor</string>
+    <string name="state_stopped">Durdu</string>
+    <string name="stop_reason_format">Durdu (%1$s)</string>
+    <string name="stop_reason_user">kullanıcı</string>
+    <string name="stop_reason_system_timeout">sistem zaman aşımı</string>
+    <string name="stop_reason_destroyed">servis kapatıldı</string>
+    <string name="error_identity_unavailable">Kurulum kimliği okunamadı. Güvenli yeni kimlik oluşturmak için uygulamayı yeniden yükleyin.</string>
+    <string name="error_start_failed">Toplama başlatılamadı. Cihaz günlüğünü kontrol edip yeniden deneyin.</string>
+
+    <string name="label_session">Oturum</string>
+    <string name="no_session">—</string>
+    <string name="label_tick">Tik</string>
+    <string name="label_outcome">Sonuç</string>
+    <string name="outcome_accepted">Yerel test kabul edildi</string>
+    <string name="outcome_retryable">Yeniden deneme bekliyor</string>
+    <string name="outcome_rejected">Reddedildi</string>
+    <string name="outcome_session_lost">Oturum kayboldu</string>
+    <string name="outcome_open_failed">Oturum açılamadı</string>
+    <string name="outcome_none">—</string>
+
+    <string name="label_found">Bulunan yetenekler</string>
+    <string name="label_accepted">Kabul edilen yetenekler</string>
+    <string name="none_value">Yok</string>
+    <string name="label_measurements">Son ölçümler</string>
+    <string name="no_measurements">Henüz ölçüm yok.</string>
+    <string name="quality_valid">geçerli</string>
+    <string name="quality_invalid">geçersiz</string>
+    <string name="quality_missing">veri yok</string>
+    <string name="measurement_valid">%1$s: %2$s %3$s (%4$s, %5$s)</string>
+    <string name="measurement_valid_text">%1$s: %2$s (%3$s, %4$s)</string>
+    <string name="measurement_invalid">%1$s: %2$s (%3$s)</string>
+    <string name="measurement_missing">%1$s: %2$s</string>
+    <string name="age_seconds">%1$d sn</string>
+    <string name="age_minutes_seconds">%1$d dk %2$d sn</string>
+
+    <string name="cap_battery_level">Batarya seviyesi</string>
+    <string name="cap_battery_temp">Batarya sıcaklığı</string>
+    <string name="cap_battery_voltage">Batarya voltajı</string>
+    <string name="cap_charge_state">Şarj durumu</string>
+    <string name="cap_accel">İvmeölçer</string>
+    <string name="cap_proximity">Yakınlık</string>
+    <string name="cap_network">Ağ</string>
+    <string name="cap_signal">Wi-Fi sinyali</string>
+
+    <string name="charge_charging">şarj oluyor</string>
+    <string name="charge_discharging">deşarj oluyor</string>
+    <string name="charge_not_charging">şarj olmuyor</string>
+    <string name="charge_full">dolu</string>
+    <string name="proximity_near">yakın</string>
+    <string name="proximity_far">uzak</string>
+
+    <string name="transport_none">yok</string>
+    <string name="transport_wifi">Wi-Fi</string>
+    <string name="transport_cellular">hücresel</string>
+    <string name="transport_other">diğer</string>
+    <string name="label_internet">internet</string>
+    <string name="label_validated">doğrulanmış</string>
+    <string name="yes">evet</string>
+    <string name="no">hayır</string>
+    <string name="network_value">%1$s · %2$s: %3$s · %4$s: %5$s</string>
+</resources>

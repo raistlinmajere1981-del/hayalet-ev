@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">Gaia Client</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="status_idle">Service stopped. Press Start to begin.</string>
+
+    <string name="notification_channel_name">Gaia Client collection</string>
+    <string name="notification_channel_description">Foreground hardware collection for the local test session</string>
+    <string name="notification_title">Gaia Client</string>
+    <string name="notification_starting">Starting local collection…</string>
+    <string name="notification_running">Local test collection running</string>
+    <string name="notification_stop">Stop</string>
+
+    <string name="local_test_mode">Local test mode — no central connection</string>
+    <string name="device_info">Device: %1$s %2$s\nAndroid %3$s (API %4$d)\nABI: %5$s</string>
+    <string name="label_state">Service</string>
+    <string name="state_running">Running</string>
+    <string name="state_stopped">Stopped</string>
+    <string name="stop_reason_format">Stopped (%1$s)</string>
+    <string name="stop_reason_user">user</string>
+    <string name="stop_reason_system_timeout">system timeout</string>
+    <string name="stop_reason_destroyed">service destroyed</string>
+    <string name="error_identity_unavailable">Installation identity could not be read. Reinstall the app to create a safe new identity.</string>
+    <string name="error_start_failed">Collection could not be started. Check the device log and try again.</string>
+
+    <string name="label_session">Session</string>
+    <string name="no_session">—</string>
+    <string name="label_tick">Tick</string>
+    <string name="label_outcome">Outcome</string>
+    <string name="outcome_accepted">Local test accepted</string>
+    <string name="outcome_retryable">Retry pending</string>
+    <string name="outcome_rejected">Rejected</string>
+    <string name="outcome_session_lost">Session lost</string>
+    <string name="outcome_open_failed">Open failed</string>
+    <string name="outcome_none">—</string>
+
+    <string name="label_found">Found capabilities</string>
+    <string name="label_accepted">Accepted capabilities</string>
+    <string name="none_value">None</string>
+    <string name="label_measurements">Last measurements</string>
+    <string name="no_measurements">No measurements yet.</string>
+    <string name="quality_valid">valid</string>
+    <string name="quality_invalid">invalid</string>
+    <string name="quality_missing">no data</string>
+    <string name="measurement_valid">%1$s: %2$s %3$s (%4$s, %5$s)</string>
+    <string name="measurement_valid_text">%1$s: %2$s (%3$s, %4$s)</string>
+    <string name="measurement_invalid">%1$s: %2$s (%3$s)</string>
+    <string name="measurement_missing">%1$s: %2$s</string>
+    <string name="age_seconds">%1$d s</string>
+    <string name="age_minutes_seconds">%1$d min %2$d s</string>
+
+    <string name="cap_battery_level">Battery level</string>
+    <string name="cap_battery_temp">Battery temperature</string>
+    <string name="cap_battery_voltage">Battery voltage</string>
+    <string name="cap_charge_state">Charge state</string>
+    <string name="cap_accel">Accelerometer</string>
+    <string name="cap_proximity">Proximity</string>
+    <string name="cap_network">Network</string>
+    <string name="cap_signal">Wi-Fi signal</string>
+
+    <string name="charge_charging">charging</string>
+    <string name="charge_discharging">discharging</string>
+    <string name="charge_not_charging">not charging</string>
+    <string name="charge_full">full</string>
+    <string name="proximity_near">near</string>
+    <string name="proximity_far">far</string>
+
+    <string name="transport_none">none</string>
+    <string name="transport_wifi">Wi-Fi</string>
+    <string name="transport_cellular">cellular</string>
+    <string name="transport_other">other</string>
+    <string name="label_internet">internet</string>
+    <string name="label_validated">validated</string>
+    <string name="yes">yes</string>
+    <string name="no">no</string>
+    <string name="network_value">%1$s · %2$s: %3$s · %4$s: %5$s</string>
+</resources>

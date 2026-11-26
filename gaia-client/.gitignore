@@ -1,0 +1,6 @@
+# Local SDK configuration, Gradle caches and build outputs
+/.gradle/
+/.kotlin/
+/local.properties
+/app/build/
+/build/
