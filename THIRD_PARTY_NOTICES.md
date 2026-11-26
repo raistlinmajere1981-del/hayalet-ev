@@ -107,3 +107,7 @@ Kaynak ağacına yeni bir model, ikon, font, ses, görsel, vendored kütüphane 
 
 - Three.js 0.187.0 (MIT) ve aynı paketin OrbitControls bileşeni, yalnız 3B görünüm açıldığında yüklenen yerel parçadadır. Telif ve lisans, oda paketindeki `DEPENDENCY-LICENSES.md` içinde yer alır. [Three.js kaynak kodu ve lisansı](https://github.com/mrdoob/three.js/tree/r187)
 - `@types/three` 0.187.0 (MIT), `@types/stats.js`, `@types/webxr`, `@tweenjs/tween.js`, `fflate` ve `meshoptimizer` (MIT) ile `@dimforge/rapier3d-compat` (Apache-2.0) geliştirme bağımlılıklarıdır. Bu tip ağacından uygulama kodu dağıtım paketine girmez.
+
+## Gaia 03-B3/2 yerel sertifika altyapısı
+
+PKI.js 3.4.0 ve ASN1js 3.0.10 (BSD-3-Clause) X.509 ve PKCS#10 işlemlerinde, ipaddr.js 1.9.1 (MIT) IP SAN kodlamasında kullanılır. Bunlar merkezin JavaScript çalışma zamanı bağımlılıklarıdır. Sabit sürümler, transitif girdiler ve dağıtımla korunacak lisanslar aşağıda kayıtlıdır. [Paket kilidi](package-lock.json) · [Lisans metinleri](third-party-licenses/GAIA-FIELD-PKI.txt)

@@ -14,13 +14,20 @@ import {
   type VerifyAuthorizationExpectation,
 } from "../field/enrollment.ts";
 import type { World } from "../spatial/world.ts";
-import { directory, publish, readRegular, serialized } from "./files.ts";
+import {
+  acquireDirectoryLock,
+  directory,
+  hasCode,
+  publish,
+  readRegular,
+  serialized,
+} from "./files.ts";
 
 export function authorizationStorePath(storageRoot: string): string {
   return join(storageRoot, "field", "authorization.json");
 }
 
-async function privatePath(path: string, isDirectory: boolean) {
+export async function privatePath(path: string, isDirectory: boolean) {
   const stat = await lstat(path);
   if (
     (isDirectory ? !stat.isDirectory() : !stat.isFile() || stat.nlink !== 1) ||
@@ -37,12 +44,30 @@ export async function trustedFieldRoot(root: string) {
 // Only first-time local provisioning may create history. A lost ledger must never look virgin.
 export async function provisionAuthorizationStore(root: string) {
   await trustedFieldRoot(root);
-  await mkdir(join(root, ".field-provisioned"), { mode: 0o700 });
-  await mkdir(join(root, "field"), { mode: 0o700 });
-  await publish(
-    authorizationStorePath(root),
-    serializeAuthorizationStore(emptyAuthorizationStore())
+  const marker = join(root, ".field-provisioned");
+  const field = join(root, "field");
+  const existing = await Promise.all(
+    [marker, field].map((path) =>
+      lstat(path).catch((error: unknown) => {
+        if (hasCode(error, "ENOENT")) return undefined;
+        throw error;
+      })
+    )
   );
+  if (existing.some(Boolean))
+    throw Object.assign(new Error("Gaia field storage already exists"), { code: "EEXIST" });
+  // General restore must finish its last world/status write before a center can create authority.
+  const release = await acquireDirectoryLock(root, true);
+  try {
+    await mkdir(marker, { mode: 0o700 });
+    await mkdir(field, { mode: 0o700 });
+    await publish(
+      authorizationStorePath(root),
+      serializeAuthorizationStore(emptyAuthorizationStore())
+    );
+  } finally {
+    await release();
+  }
 }
 
 export async function readAuthorizationStore(storageRoot: string): Promise<AuthorizationStore> {

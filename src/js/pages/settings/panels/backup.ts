@@ -42,6 +42,7 @@ interface BackupPreviewResult {
   riskLevel: string;
   fileCount: number;
   overwrittenFilesCount: number;
+  skippedGaiaStateFiles?: number;
 }
 
 interface BackupOverlayRefs {
@@ -380,6 +381,13 @@ export function setupSettingsBackupPanel(): void {
           detail: [
             shellT("backup.confirm.scopeLine", { scopes: preview.selectedScopes.join(", ") }),
             shellT("backup.confirm.fileLine", { count: String(preview.fileCount) }),
+            ...((preview.skippedGaiaStateFiles ?? 0) > 0
+              ? [
+                  shellT("backup.preview.gaiaStateSkipped", {
+                    count: String(preview.skippedGaiaStateFiles),
+                  }),
+                ]
+              : []),
             ...preview.restartTargets.map((target) =>
               shellT("backup.confirm.restartLine", { target })
             ),
@@ -395,7 +403,16 @@ export function setupSettingsBackupPanel(): void {
           scopeIds: [...state.selectedScopeIds],
           createdBy: "ui",
         });
-        Toast.success(shellT("backup.toasts.restoreSuccess"), result.bundlePath);
+        if ((result.skippedGaiaStateFiles ?? 0) > 0) {
+          Toast.warning(
+            shellT("backup.toasts.restoreSuccess"),
+            shellT("backup.preview.gaiaStateSkipped", {
+              count: String(result.skippedGaiaStateFiles),
+            })
+          );
+        } else {
+          Toast.success(shellT("backup.toasts.restoreSuccess"), result.bundlePath);
+        }
         Logger.successT(LogCategory.UI_MODAL, "app.logs.backup.restoreSucceeded", {
           path: result.bundlePath,
         });

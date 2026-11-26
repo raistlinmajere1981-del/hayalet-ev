@@ -30,6 +30,7 @@ interface BackupPreviewResult {
   riskLevel: string;
   fileCount: number;
   overwrittenFilesCount: number;
+  skippedGaiaStateFiles?: number;
 }
 
 function escapeHtml(value: string): string {
@@ -226,6 +227,13 @@ export function buildBackupPreviewMarkup(
   }
 
   const warnings = [];
+  if ((preview.skippedGaiaStateFiles ?? 0) > 0) {
+    warnings.push(
+      AppI18n.t("shell.backup.preview.gaiaStateSkipped", {
+        count: String(preview.skippedGaiaStateFiles),
+      })
+    );
+  }
   if (preview.requiresColdRestore) {
     warnings.push(backupText("preview.coldRestoreWarning"));
   }

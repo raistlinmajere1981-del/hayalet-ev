@@ -1363,6 +1363,7 @@
         "overwrites": "Üzerine yazma",
         "risk": "Risk",
         "restartTargets": "Restart hedefleri",
+        "gaiaStateSkipped": "Saha yetkisini korumak için {{count}} Gaia dünya veya durum dosyası bu geri yüklemenin dışında tutulur.",
         "coldRestoreWarning": "Seçilen scope'lar için cold restore önerilir.",
         "dataWarning": "Kullanıcı verisini geri yüklemek mevcut runtime state'i ezer."
       },

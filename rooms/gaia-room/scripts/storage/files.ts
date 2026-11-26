@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, mkdir, open, realpath, rename, rm, unlink } from "node:fs/promises";
-import { createHash, randomUUID } from "node:crypto";
-import { createServer } from "node:net";
+import { randomUUID } from "node:crypto";
+import { acquireGaiaStorageLock } from "../../../../shared/gaia-storage-lock.mjs";
 import { dirname, join } from "node:path";
 
 export function hasCode(error: unknown, code: string): boolean {
@@ -71,24 +71,7 @@ export async function publish(path: string, bytes: string | Buffer): Promise<voi
 
 const queues = new Map<string, Promise<unknown>>();
 export async function acquireDirectoryLock(dir: string, owner = false) {
-  // Keep the existing writer namespace so an older process still contends on the same project.
-  const key =
-    (owner ? "hev-gaia-owner-" : "hev-gaia-") +
-    createHash("sha256")
-      .update(await realpath(dir))
-      .digest("hex")
-      .slice(0, 40);
-  const address = process.platform === "win32" ? "\\\\.\\pipe\\" + key : "\0" + key;
-  const lock = createServer((socket) => socket.destroy());
-  await new Promise<void>((resolve, reject) => {
-    lock.once("error", reject);
-    lock.listen(address, resolve);
-  });
-  lock.unref();
-  return () =>
-    new Promise<void>((resolve, reject) =>
-      lock.close((error) => (error ? reject(error) : resolve()))
-    );
+  return acquireGaiaStorageLock(await realpath(dir), owner);
 }
 
 export async function serialized<T>(dir: string, work: () => Promise<T>): Promise<T> {

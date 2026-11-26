@@ -2,7 +2,7 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,14 +47,15 @@ async function ensureDir(dirPath) {
   await mkdir(dirPath, { recursive: true });
 }
 
-async function listFilesRecursive(dirPath) {
+async function listFilesRecursive(dirPath, protectedPaths) {
   const entries = await readdir(dirPath, { withFileTypes: true });
   const files = [];
 
   for (const entry of entries) {
     const fullPath = join(dirPath, entry.name);
+    if (matchesAny(toPosix(relative(projectRoot, fullPath)), protectedPaths)) continue;
     if (entry.isDirectory()) {
-      files.push(...(await listFilesRecursive(fullPath)));
+      files.push(...(await listFilesRecursive(fullPath, protectedPaths)));
       continue;
     }
     if (entry.isFile()) {
@@ -69,7 +70,7 @@ function escapeRegExp(value) {
   return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
 }
 
-function globToRegex(globPattern) {
+function globToRegex(globPattern, flags = "") {
   const pattern = toPosix(globPattern);
   let regex = "^";
 
@@ -92,7 +93,7 @@ function globToRegex(globPattern) {
   }
 
   regex += "$";
-  return new RegExp(regex);
+  return new RegExp(regex, flags);
 }
 
 function getLiteralIncludeRoot(pattern) {
@@ -103,13 +104,13 @@ function getLiteralIncludeRoot(pattern) {
   }
 
   const prefix = normalized.slice(0, wildcardIndex);
-  const withoutTrailingSlash = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
-  if (withoutTrailingSlash === "") {
-    return ".";
-  }
+  return prefix.endsWith("/") ? prefix.slice(0, -1) || "." : dirname(prefix);
+}
 
-  const lastSlash = withoutTrailingSlash.lastIndexOf("/");
-  return lastSlash === -1 ? "." : withoutTrailingSlash.slice(0, lastSlash);
+function protectedMatchers(manifest) {
+  return manifest.scopes.flatMap((scope) =>
+    (scope.protectedPaths ?? []).map((pattern) => ({ regex: globToRegex(pattern, "i") }))
+  );
 }
 
 function createScopeMatchers(definition) {
@@ -129,7 +130,7 @@ function matchesAny(pathValue, matchers) {
   return matchers.some((matcher) => matcher.regex.test(pathValue));
 }
 
-async function collectScopeFiles(definition) {
+async function collectScopeFiles(definition, protectedPaths) {
   const matchers = createScopeMatchers(definition);
   const candidateFiles = new Set();
 
@@ -142,7 +143,7 @@ async function collectScopeFiles(definition) {
 
     const stats = await stat(absoluteRoot);
     if (stats.isDirectory()) {
-      const nestedFiles = await listFilesRecursive(absoluteRoot);
+      const nestedFiles = await listFilesRecursive(absoluteRoot, protectedPaths);
       for (const filePath of nestedFiles) {
         candidateFiles.add(filePath);
       }
@@ -163,7 +164,7 @@ async function collectScopeFiles(definition) {
     if (matchesAny(relativePath, matchers.include) === false) {
       continue;
     }
-    if (matchesAny(relativePath, matchers.exclude) === true) {
+    if (matchesAny(relativePath, matchers.exclude) || matchesAny(relativePath, protectedPaths)) {
       continue;
     }
 
@@ -281,6 +282,11 @@ function resolveStoredBackupPath(filePath) {
   return resolvedFilePath;
 }
 
+export async function loadProtectedBackupPathFilter() {
+  const matchers = protectedMatchers(await readScopeManifest());
+  return (path) => matchesAny(toPosix(path), matchers);
+}
+
 export async function listScopes() {
   const manifest = await readScopeManifest();
   return manifest.scopes;
@@ -305,7 +311,7 @@ export async function createBackup(options = {}) {
   const scopeSummaries = [];
 
   for (const scope of selection.selectedScopes) {
-    const files = await collectScopeFiles(scope);
+    const files = await collectScopeFiles(scope, protectedMatchers(manifest));
     let scopeBytes = 0;
 
     for (const file of files) {
@@ -335,13 +341,24 @@ export async function createBackup(options = {}) {
     bundleId: randomUUID(),
     schemaVersion: 1,
     createdAt,
-    createdBy: typeof options.createdBy === "string" && options.createdBy.trim() !== "" ? options.createdBy : "user",
-    sourceVersion: typeof options.sourceVersion === "string" && options.sourceVersion.trim() !== "" ? options.sourceVersion : null,
+    createdBy:
+      typeof options.createdBy === "string" && options.createdBy.trim() !== ""
+        ? options.createdBy
+        : "user",
+    sourceVersion:
+      typeof options.sourceVersion === "string" && options.sourceVersion.trim() !== ""
+        ? options.sourceVersion
+        : null,
     selectedScopes: selection.selectedScopeIds,
-    restoreMode:
-      selection.selectedScopes.some((scope) => scope.requiresColdRestore === true) ? "cold" : "hot",
-    label: typeof options.label === "string" && options.label.trim() !== "" ? options.label.trim() : null,
-    note: typeof options.note === "string" && options.note.trim() !== "" ? options.note.trim() : null,
+    restoreMode: selection.selectedScopes.some((scope) => scope.requiresColdRestore === true)
+      ? "cold"
+      : "hot",
+    label:
+      typeof options.label === "string" && options.label.trim() !== ""
+        ? options.label.trim()
+        : null,
+    note:
+      typeof options.note === "string" && options.note.trim() !== "" ? options.note.trim() : null,
     entries: scopeSummaries,
   };
 
@@ -443,7 +460,45 @@ export async function deleteBackup(filePath) {
   };
 }
 
-export async function previewBackupRestore(options = {}) {
+const gaiaRoot = join(projectRoot, "data", "room-storage", "gaia-room");
+const gaiaStatePath =
+  /^data\/room-storage\/gaia-room\/projects\/[^/]+\/(?:world|device-status)\.json$/i;
+
+async function hasFieldArea() {
+  for (const name of [".field-provisioned", "field"]) {
+    try {
+      await lstat(join(gaiaRoot, name));
+      return true;
+    } catch (error) {
+      // A damaged marker or an unreadable parent cannot establish that this is a fresh center.
+      if (error.code !== "ENOENT") return true;
+    }
+  }
+  return false;
+}
+
+// Only ordinary files and directories have a stable backup destination; an alias could enter the field area.
+async function checkRestorePath(path, checkedDirectories) {
+  const parts = path.split("/");
+  let target = projectRoot;
+  for (const [index, part] of parts.entries()) {
+    target = join(target, part);
+    if (index < parts.length - 1 && checkedDirectories.has(target)) continue;
+    let info;
+    try {
+      info = await lstat(target);
+    } catch (error) {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    }
+    if (index === parts.length - 1 ? !info.isFile() || info.nlink !== 1 : !info.isDirectory())
+      throw createError("UNSAFE_RESTORE_PATH", `Unsafe backup destination: ${path}`);
+    if (info.isDirectory()) checkedDirectories.add(target);
+  }
+  return true;
+}
+
+async function withRestorePlan(options, work) {
   const bundle = await inspectBackup(options.filePath);
   const manifest = await readScopeManifest();
   const scopeMap = new Map(manifest.scopes.map((scope) => [scope.id, scope]));
@@ -465,80 +520,155 @@ export async function previewBackupRestore(options = {}) {
     .map((scopeId) => scopeMap.get(scopeId))
     .filter((scope) => scope !== undefined);
 
-  const relevantFiles = bundle.files.filter((entry) => selectedScopeIds.includes(entry.scopeId));
-  const warnings = [];
-  const overwrittenFiles = [];
-
-  for (const entry of relevantFiles) {
-    const destinationPath = resolve(projectRoot, entry.path);
-    if (existsSync(destinationPath)) {
-      overwrittenFiles.push(entry.path);
+  const protectedPaths = protectedMatchers(manifest);
+  const scopeMatchers = new Map(
+    selectedScopes.map((scope) => [scope.id, createScopeMatchers(scope)])
+  );
+  const files = bundle.files.filter((entry) => {
+    if (!selectedScopeIds.includes(entry.scopeId)) return false;
+    const path = entry.path;
+    if (
+      typeof path !== "string" ||
+      !path ||
+      path.includes("\\") ||
+      path.includes("\0") ||
+      toPosix(relative(projectRoot, resolve(projectRoot, path))) !== path ||
+      path.split("/").includes("..")
+    )
+      throw createError("UNSAFE_RESTORE_PATH", "Invalid relative backup destination");
+    const scope = scopeMatchers.get(entry.scopeId);
+    return (
+      scope &&
+      matchesAny(path, scope.include) &&
+      !matchesAny(path, scope.exclude) &&
+      !matchesAny(path, protectedPaths)
+    );
+  });
+  const hasGaiaState = files.some((entry) => gaiaStatePath.test(entry.path));
+  let release;
+  try {
+    let restricted = hasGaiaState && (await hasFieldArea());
+    if (hasGaiaState && !restricted) {
+      // First provisioning takes this same root lock before creating either marker.
+      const { acquireGaiaStorageLock } = await import("../../shared/gaia-storage-lock.mjs");
+      try {
+        release = await acquireGaiaStorageLock(gaiaRoot, true);
+        restricted = await hasFieldArea();
+      } catch (error) {
+        if (error.code !== "EADDRINUSE") throw error;
+        restricted = true;
+      }
     }
+    const relevantFiles = restricted
+      ? files.filter((entry) => !gaiaStatePath.test(entry.path))
+      : files;
+    const skippedGaiaStateFiles = files.length - relevantFiles.length;
+    let overwrittenFilesCount = 0;
+    const checkedDirectories = new Set();
+    for (const entry of relevantFiles) {
+      if (await checkRestorePath(entry.path, checkedDirectories)) overwrittenFilesCount++;
+    }
+    return await work({
+      bundle,
+      selectedScopeIds,
+      selectedScopes,
+      relevantFiles,
+      skippedGaiaStateFiles,
+      overwrittenFilesCount,
+    });
+  } finally {
+    if (release) await release();
   }
+}
 
-  if (selectedScopes.some((scope) => scope.riskLevel === "very-high")) {
-    warnings.push("Restoring user data will overwrite the current runtime state.");
-  }
-  if (selectedScopes.some((scope) => scope.requiresColdRestore === true)) {
-    warnings.push("Selected scopes are safer to restore while related processes are stopped.");
-  }
+export async function previewBackupRestore(options = {}) {
+  return withRestorePlan(
+    options,
+    ({
+      bundle,
+      selectedScopeIds,
+      selectedScopes,
+      relevantFiles,
+      skippedGaiaStateFiles,
+      overwrittenFilesCount,
+    }) => {
+      const warnings = [];
+      if (skippedGaiaStateFiles) warnings.push(gaiaRestoreWarning(skippedGaiaStateFiles));
+      if (selectedScopes.some((scope) => scope.riskLevel === "very-high")) {
+        warnings.push("Restoring user data will overwrite the current runtime state.");
+      }
+      if (selectedScopes.some((scope) => scope.requiresColdRestore === true)) {
+        warnings.push("Selected scopes are safer to restore while related processes are stopped.");
+      }
 
-  return {
-    success: true,
-    filePath: bundle.filePath,
-    selectedScopes: selectedScopeIds,
-    availableScopes: bundle.manifest.selectedScopes,
-    requiresColdRestore: selectedScopes.some((scope) => scope.requiresColdRestore === true),
-    restartTargets: [...new Set(selectedScopes.flatMap((scope) => scope.restartTargets ?? []))],
-    riskLevel: selectedScopes.some((scope) => scope.riskLevel === "very-high")
-      ? "very-high"
-      : selectedScopes.some((scope) => scope.riskLevel === "high")
-        ? "high"
-        : selectedScopes.some((scope) => scope.riskLevel === "medium")
-          ? "medium"
-          : "low",
-    warningCount: warnings.length,
-    warnings,
-    fileCount: relevantFiles.length,
-    overwrittenFilesCount: overwrittenFiles.length,
-  };
+      return {
+        success: true,
+        filePath: bundle.filePath,
+        selectedScopes: selectedScopeIds,
+        availableScopes: bundle.manifest.selectedScopes,
+        requiresColdRestore: selectedScopes.some((scope) => scope.requiresColdRestore === true),
+        restartTargets: [...new Set(selectedScopes.flatMap((scope) => scope.restartTargets ?? []))],
+        riskLevel: selectedScopes.some((scope) => scope.riskLevel === "very-high")
+          ? "very-high"
+          : selectedScopes.some((scope) => scope.riskLevel === "high")
+            ? "high"
+            : selectedScopes.some((scope) => scope.riskLevel === "medium")
+              ? "medium"
+              : "low",
+        warningCount: warnings.length,
+        warnings,
+        fileCount: relevantFiles.length,
+        overwrittenFilesCount,
+        skippedGaiaStateFiles,
+      };
+    }
+  );
+}
+
+function gaiaRestoreWarning(count) {
+  return `Skipped ${count} Gaia world/status file(s) to protect field authorization history.`;
 }
 
 export async function restoreBackup(options = {}) {
-  const preview = await previewBackupRestore(options);
-  const bundle = await inspectBackup(options.filePath);
-  const selectedScopeIds = preview.selectedScopes;
-  const relevantFiles = bundle.files.filter((entry) => selectedScopeIds.includes(entry.scopeId));
+  return withRestorePlan(
+    options,
+    async ({ bundle, selectedScopeIds, relevantFiles, skippedGaiaStateFiles }) => {
+      if (options.safetyBackup !== false) {
+        await createBackup({
+          scopeIds: selectedScopeIds,
+          createdBy: typeof options.createdBy === "string" ? options.createdBy : "system",
+          label: `safety-${selectedScopeIds.join("-")}`,
+          note: `Pre-restore safety backup for ${bundle.filePath}`,
+        });
+      }
 
-  if (options.safetyBackup !== false) {
-    await createBackup({
-      scopeIds: selectedScopeIds,
-      createdBy: typeof options.createdBy === "string" ? options.createdBy : "system",
-      label: `safety-${selectedScopeIds.join("-")}`,
-      note: `Pre-restore safety backup for ${bundle.filePath}`,
-    });
-  }
+      for (const entry of relevantFiles) {
+        const decoded = Buffer.from(entry.contentBase64, "base64");
+        const checksum = await sha256Buffer(decoded);
+        if (checksum !== entry.checksum) {
+          throw createError("CHECKSUM_MISMATCH", `Checksum mismatch for ${entry.path}`, {
+            path: entry.path,
+          });
+        }
 
-  for (const entry of relevantFiles) {
-    const decoded = Buffer.from(entry.contentBase64, "base64");
-    const checksum = await sha256Buffer(decoded);
-    if (checksum !== entry.checksum) {
-      throw createError("CHECKSUM_MISMATCH", `Checksum mismatch for ${entry.path}`, {
-        path: entry.path,
-      });
+        const destinationPath = resolve(projectRoot, entry.path);
+        await mkdir(dirname(destinationPath), {
+          recursive: true,
+          ...(entry.path.startsWith("data/room-storage/gaia-room/") ? { mode: 0o700 } : {}),
+        });
+        await writeFile(destinationPath, decoded);
+      }
+
+      return {
+        success: true,
+        restoredScopes: selectedScopeIds,
+        restoredFiles: relevantFiles.length,
+        bundlePath: bundle.filePath,
+        skippedGaiaStateFiles,
+        warnings: skippedGaiaStateFiles ? [gaiaRestoreWarning(skippedGaiaStateFiles)] : [],
+      };
     }
-
-    const destinationPath = resolve(projectRoot, entry.path);
-    await ensureDir(dirname(destinationPath));
-    await writeFile(destinationPath, decoded);
-  }
-
-  return {
-    success: true,
-    restoredScopes: selectedScopeIds,
-    restoredFiles: relevantFiles.length,
-    bundlePath: bundle.filePath,
-  };
+  );
 }
 
 export function getBackupStorageDir() {

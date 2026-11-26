@@ -85,7 +85,8 @@ async function main() {
   const { command, flags } = parseArgs(process.argv.slice(2));
   const locale = await detectLocale();
   const catalog = await loadCliCatalog(locale);
-  const t = (key, fallback, params) => interpolate(pickLocaleFromCatalog(catalog, key, fallback), params);
+  const t = (key, fallback, params) =>
+    interpolate(pickLocaleFromCatalog(catalog, key, fallback), params);
   const jsonOutput = flags["json"] === true;
 
   try {
@@ -105,7 +106,11 @@ async function main() {
           return;
         }
 
-        console.log(t("shell.backup.cli.createSuccess", "Backup created: {{path}}", { path: result.bundlePath }));
+        console.log(
+          t("shell.backup.cli.createSuccess", "Backup created: {{path}}", {
+            path: result.bundlePath,
+          })
+        );
         console.log(
           t("shell.backup.cli.selectedScopes", "Scopes: {{scopes}}", {
             scopes: result.selectedScopes.join(", "),
@@ -127,7 +132,11 @@ async function main() {
         }
 
         if (items.length === 0) {
-          console.log(t("shell.backup.cli.listEmpty", "No backups were found in {{dir}}", { dir: getBackupStorageDir() }));
+          console.log(
+            t("shell.backup.cli.listEmpty", "No backups were found in {{dir}}", {
+              dir: getBackupStorageDir(),
+            })
+          );
           return;
         }
 
@@ -198,6 +207,7 @@ async function main() {
             path: result.bundlePath,
           })
         );
+        for (const warning of result.warnings) console.log(`- ${warning}`);
         return;
       }
 
@@ -214,7 +224,9 @@ async function main() {
       }
 
       default:
-        console.log("Usage: node scripts/backup-cli.mjs <create|list|inspect|preview|restore|scopes|presets> [options]");
+        console.log(
+          "Usage: node scripts/backup-cli.mjs <create|list|inspect|preview|restore|scopes|presets> [options]"
+        );
     }
   } catch (error) {
     if (jsonOutput) {

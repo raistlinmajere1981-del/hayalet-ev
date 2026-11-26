@@ -752,6 +752,7 @@ declare global {
       warnings: string[];
       fileCount: number;
       overwrittenFilesCount: number;
+      skippedGaiaStateFiles?: number;
     }>;
     backupRestore: (payload: {
       filePath: string;
@@ -762,6 +763,7 @@ declare global {
       success: boolean;
       restoredScopes: string[];
       restoredFiles: number;
+      skippedGaiaStateFiles?: number;
       bundlePath: string;
     }>;
     openTerminal: (path: string) => Promise<{ success: boolean; error?: string }>;

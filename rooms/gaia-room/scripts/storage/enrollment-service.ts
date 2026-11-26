@@ -1,3 +1,7 @@
+import { derBase64, sha256, verifyFieldPeer } from "../field/certificates.ts";
+import { issuedCertificate, readIssuances, writeIssuances } from "./issuance-store.ts";
+import { approvedEnrollmentCommand, verifyInstallation } from "../field/installation.ts";
+import { readFieldTrust, usesFieldCa } from "./field-trust.ts";
 import { join } from "node:path";
 import { capabilityId } from "../devices/capabilities.ts";
 import {
@@ -94,10 +98,7 @@ async function withVerifiedAssignment<T>(
     return await work(document.world, statusEpoch, assignment);
   });
 }
-async function beginEnrollment(
-  storageRoot: string,
-  request: Record<string, unknown>
-): Promise<unknown> {
+async function beginEnrollment(storageRoot: string, request: Record<string, unknown>) {
   const operationId = request["operationId"];
   uuid(operationId);
   const project = request["project"];
@@ -200,8 +201,9 @@ async function beginEnrollment(
 
 async function completeEnrollment(
   storageRoot: string,
-  request: Record<string, unknown>
-): Promise<unknown> {
+  request: Record<string, unknown>,
+  certificatesRequired: boolean
+) {
   const operationId = request["operationId"];
   uuid(operationId);
   const assignmentId = request["assignmentId"];
@@ -214,6 +216,25 @@ async function completeEnrollment(
   return await serialized(dir, async () => {
     const doc = await readDocument(join(dir, "world.json"), assignment.projectId);
     const epoch = doc.statusEpoch ?? 0;
+    if (certificatesRequired) {
+      const trust = await readFieldTrust(storageRoot);
+      const issued = issuedCertificate(
+        await readIssuances(join(storageRoot, "field", "pki")),
+        assignment.beginOperationId
+      );
+      if (
+        !issued ||
+        sha256(
+          verifyFieldPeer(
+            derBase64(issued),
+            { role: "client" },
+            trust.caCertificate,
+            trust.fingerprint
+          ).raw
+        ) !== assignment.fingerprint
+      )
+        throw new Error("Missing Gaia installation certificate");
+    }
     const completed = await updateAuthorizationStore(storageRoot, async (store) => {
       const result = completeAuthorization(store, doc.world, epoch, {
         assignmentId,
@@ -226,10 +247,7 @@ async function completeEnrollment(
   });
 }
 
-async function revokeEnrollment(
-  storageRoot: string,
-  request: Record<string, unknown>
-): Promise<unknown> {
+async function revokeEnrollment(storageRoot: string, request: Record<string, unknown>) {
   const operationId = request["operationId"];
   uuid(operationId);
   const assignmentId = request["assignmentId"];
@@ -428,9 +446,12 @@ async function transferEnrollment(storageRoot: string, request: Record<string, u
 // Trusted main-process management entry point. It is deliberately not part of the room
 // command list, so a renderer or a room package cannot read or mutate the authorization store.
 async function enrollmentCommand(
-  { storageRoot }: { storageRoot: string },
+  {
+    storageRoot,
+    certificatesRequired = false,
+  }: { storageRoot: string; certificatesRequired?: boolean },
   request: unknown
-): Promise<unknown> {
+) {
   request = structuredClone(request);
   if (!record(request)) throw new Error("Invalid Gaia enrollment request");
   const action = request["action"];
@@ -454,7 +475,7 @@ async function enrollmentCommand(
   }
   if (action === "complete") {
     const input = requestFields(request, ["action", "operationId", "assignmentId"]);
-    return await completeEnrollment(storageRoot, input);
+    return await completeEnrollment(storageRoot, input, certificatesRequired);
   }
   if (action === "revoke") {
     const input = requestFields(request, ["action", "operationId", "assignmentId"]);
@@ -488,11 +509,72 @@ async function enrollmentCommand(
   throw new Error("Unknown Gaia enrollment action");
 }
 
+// Only a locally approved USB package reaches the grant transitions on a provisioned CA center.
+async function enrollLocalInstallation(storageRoot: string, input: unknown) {
+  const pkg = structuredClone(input);
+  const trust = await readFieldTrust(storageRoot);
+  const { approval, certificateFingerprint } = verifyInstallation(pkg, trust.fingerprint);
+  const dir = join(storageRoot, "field", "pki");
+  return serialized(dir, async () => {
+    const cert = issuedCertificate(await readIssuances(dir), approval.operationId);
+    if (!cert || sha256(derBase64(cert)) !== certificateFingerprint)
+      throw new Error("Unknown Gaia issuance");
+    if (approval.change.kind === "rebindHardware") {
+      const parentId = approval.change.assignmentId;
+      const parent = (await readAuthorizationStore(storageRoot)).assignments.find(
+        (row) => row.id === parentId
+      );
+      if (parent?.projectId !== approval.projectId || parent.deviceId !== approval.deviceId)
+        throw new Error("Wrong Gaia hardware replacement target");
+    }
+    const command = approvedEnrollmentCommand(approval, certificateFingerprint);
+    const result =
+      command.action === "begin"
+        ? await beginEnrollment(storageRoot, command)
+        : await transferEnrollment(storageRoot, command);
+    if (result.assignment.state === "revoked")
+      throw new Error("Gaia installation assignment was revoked");
+    return result;
+  });
+}
+
+async function discardUnpublishedInstallation(root: string, operationId: string) {
+  uuid(operationId);
+  await readFieldTrust(root);
+  const dir = join(root, "field", "pki");
+  return serialized(dir, async () => {
+    const store = await readAuthorizationStore(root);
+    if (
+      store.assignments.some(
+        (row) => row.beginOperationId === operationId || row.carryOperationId === operationId
+      )
+    )
+      throw new Error("Revoke the Gaia assignment under its project lock");
+    const journal = await readIssuances(dir);
+    if (!journal.certificates[operationId]) throw new Error("Unknown Gaia issuance");
+    if (!journal.discarded.includes(operationId)) {
+      journal.discarded.push(operationId);
+      await writeIssuances(dir, journal);
+    }
+  });
+}
+
 // The main lifecycle owns this handle even between requests. Shutdown drains accepted work
 // before another process can take responsibility for this center's sessions.
-export async function openFieldAuthority(storageRoot: string) {
+export async function openFieldAuthority(
+  storageRoot: string,
+  options: { certificatesRequired?: boolean } = {}
+) {
   await trustedFieldRoot(storageRoot);
   const release = await acquireDirectoryLock(storageRoot, true);
+  let certificatesRequired: boolean;
+  try {
+    certificatesRequired =
+      options.certificatesRequired === true || (await usesFieldCa(storageRoot));
+  } catch (error) {
+    await release();
+    throw error;
+  }
   const running = new Set<Promise<unknown>>();
   let closing: Promise<void> | undefined;
   const run = async <T>(work: () => Promise<T>) => {
@@ -506,13 +588,54 @@ export async function openFieldAuthority(storageRoot: string) {
     }
   };
   return {
-    enrollmentCommand: (request: unknown) => run(() => enrollmentCommand({ storageRoot }, request)),
+    discardUnpublishedInstallation: (operationId: string) =>
+      run(() => discardUnpublishedInstallation(storageRoot, operationId)),
+    // B7 supplies only DER from a mutually authenticated socket. Recheck dates after waiting for the writer.
+    withVerifiedClient: <T>(
+      project: string,
+      peerDer: Buffer,
+      expected: VerifyAuthorizationExpectation,
+      work: (world: World, epoch: number, assignment: AuthorizationAssignment) => Promise<T>
+    ) =>
+      run(async () => {
+        if (peerDer.length > 18_000) throw new Error("Invalid Gaia peer certificate length");
+        const der = Buffer.from(peerDer);
+        const expectation = { ...expected };
+        return withVerifiedAssignment(
+          storageRoot,
+          project,
+          sha256(der),
+          expectation,
+          async (world, epoch, assignment) => {
+            const trust = await readFieldTrust(storageRoot);
+            verifyFieldPeer(der, { role: "client" }, trust.caCertificate, trust.fingerprint);
+            return work(world, epoch, assignment);
+          }
+        );
+      }),
+    enrollLocalInstallation: (pkg: unknown) => run(() => enrollLocalInstallation(storageRoot, pkg)),
+    enrollmentCommand: (input: unknown) =>
+      run(async () => {
+        const request = structuredClone(input);
+        if (
+          record(request) &&
+          request["action"] !== "revoke" &&
+          request["action"] !== "complete" &&
+          certificatesRequired
+        )
+          throw new Error("Signed Gaia installation package required");
+        return enrollmentCommand({ storageRoot, certificatesRequired }, request);
+      }),
     withVerifiedAssignment: <T>(
       project: string,
       fingerprint: string,
       expected: VerifyAuthorizationExpectation,
       work: (world: World, epoch: number, assignment: AuthorizationAssignment) => Promise<T>
-    ) => run(() => withVerifiedAssignment(storageRoot, project, fingerprint, expected, work)),
+    ) =>
+      run(async () => {
+        if (certificatesRequired) throw new Error("Authenticated Gaia client certificate required");
+        return withVerifiedAssignment(storageRoot, project, fingerprint, expected, work);
+      }),
     close: () => (closing ??= Promise.allSettled([...running]).then(release)),
   };
 }

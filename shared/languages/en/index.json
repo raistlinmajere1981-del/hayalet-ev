@@ -1363,6 +1363,7 @@
         "overwrites": "Overwrites",
         "risk": "Risk",
         "restartTargets": "Restart targets",
+        "gaiaStateSkipped": "Gaia field authorization protects {{count}} world or status file(s) from this restore.",
         "coldRestoreWarning": "A cold restore is recommended for the selected scopes.",
         "dataWarning": "Restoring user data will overwrite the current runtime state."
       },

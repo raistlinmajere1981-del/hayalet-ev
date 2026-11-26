@@ -6,12 +6,14 @@ import {
   existsSync,
   readdirSync,
   readFileSync,
-  statSync,
+  lstatSync,
   writeFileSync,
 } from "fs";
 import { google } from "googleapis";
-import { dirname, join, relative } from "path";
+import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
+
+import { loadProtectedBackupPathFilter } from "./backup-runtime/index.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..");
@@ -80,7 +82,7 @@ function isFileChanged(filePath, cache) {
   return !currentHash || currentHash !== cachedHash;
 }
 
-function shouldIgnoreFile(filePath) {
+function shouldIgnoreFile(relativePath) {
   const ignorePatterns = [
     "node_modules/",
     "dist/",
@@ -120,8 +122,6 @@ function shouldIgnoreFile(filePath) {
     "scripts/",
   ];
 
-  const relativePath = relative(PROJECT_ROOT, filePath);
-
   for (const pattern of ignorePatterns) {
     if (pattern.endsWith("/")) {
       if (relativePath.startsWith(pattern)) return true;
@@ -136,25 +136,20 @@ function shouldIgnoreFile(filePath) {
   return false;
 }
 
-function collectFiles(dir, fileList = []) {
-  const files = readdirSync(dir);
-
-  for (const file of files) {
-    const filePath = join(dir, file);
-    const stat = statSync(filePath);
-
-    if (stat.isDirectory()) {
-      if (!shouldIgnoreFile(filePath)) {
-        collectFiles(filePath, fileList);
-      }
-    } else {
-      if (!shouldIgnoreFile(filePath)) {
-        fileList.push(filePath);
-      }
+export function collectDriveFiles(root, isProtected) {
+  const files = [];
+  function visit(dir) {
+    for (const file of readdirSync(dir)) {
+      const path = join(dir, file);
+      const relativePath = relative(root, path).replaceAll("\\", "/");
+      if (isProtected(relativePath) || shouldIgnoreFile(relativePath)) continue;
+      const stat = lstatSync(path);
+      if (stat.isDirectory()) visit(path);
+      else if (stat.isFile()) files.push(path);
     }
   }
-
-  return fileList;
+  visit(root);
+  return files;
 }
 
 async function getOrCreateFolder(drive, name, parentId = null) {
@@ -269,7 +264,9 @@ async function main() {
       await drive.files.list({ pageSize: 1, fields: "files(id)" });
     } catch (err) {
       if (err.code === 401 || err.message.includes("invalid_grant")) {
-        throw new Error("Token süresi geçmiş. Lütfen uygulamada Google Drive'a yeniden bağlanın.", { cause: err });
+        throw new Error("Token süresi geçmiş. Lütfen uygulamada Google Drive'a yeniden bağlanın.", {
+          cause: err,
+        });
       }
       throw err;
     }
@@ -280,7 +277,7 @@ async function main() {
     log("info", `Klasör hazır: ${SYNC_DIR} (ID: ${rootFolderId})`);
 
     const cache = loadSyncCache();
-    const allFiles = collectFiles(PROJECT_ROOT);
+    const allFiles = collectDriveFiles(PROJECT_ROOT, await loadProtectedBackupPathFilter());
     log("info", `${allFiles.length} dosya tespit edildi`);
 
     const filesToUpload = [];
@@ -347,4 +344,4 @@ async function main() {
   }
 }
 
-main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
