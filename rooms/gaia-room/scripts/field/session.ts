@@ -347,7 +347,13 @@ export class SessionManager {
         const openedMono = this.readMono();
         const current = this.byDevice.get(key);
         if (current) {
-          if (!current.inFlight && openedMono >= current.deadlineMonoMs)
+          if (
+            current.clientFingerprint !== client.fingerprint ||
+            current.authorizationGeneration !== resolved.assignment.authorizationGeneration ||
+            current.statusEpoch !== resolved.assignment.statusEpoch
+          )
+            this.expire(current, "authorization");
+          else if (!current.inFlight && openedMono >= current.deadlineMonoMs)
             this.expire(current, "timeout");
           else
             throw new SessionError(
@@ -394,6 +400,21 @@ export class SessionManager {
     return await this.track(
       session.queue.run(async () => await this.observeSerial(session, client, hash, packet))
     );
+  }
+
+  bindingFor(fingerprint: string, sessionId: string): SessionExpectation | undefined {
+    const session = this.sessions.get(sessionId);
+    return session?.clientFingerprint === fingerprint ? expectationOf(session) : undefined;
+  }
+
+  hasDevice(projectId: string, deviceId: string): boolean {
+    return this.byDevice.has(deviceKey(projectId, deviceId));
+  }
+
+  retireClient(fingerprint: string): void {
+    for (const session of this.sessions.values()) {
+      if (session.clientFingerprint === fingerprint) this.expire(session, "authorization");
+    }
   }
 
   inspect(sessionId: string): SessionInspection | undefined {

@@ -2,6 +2,17 @@
 import { registerStorageProvider } from "../../electron/rooms/storage-commands.ts";
 import { gaiaStorage } from "../../rooms/gaia-room/scripts/storage/provider.ts";
 import { decodeRaster } from "../../rooms/gaia-room/scripts/storage/electron-raster.ts";
+import { app, powerMonitor } from "electron";
+import { Paths } from "../../electron/paths.ts";
+import { attachGaiaField } from "./gaia-field-main.mjs";
+
 import "../../electron/main.ts";
 
 registerStorageProvider(gaiaStorage(decodeRaster));
+
+export const gaiaField = attachGaiaField(
+  app,
+  powerMonitor,
+  () => Paths.getRoomStorageDir("gaia-room"),
+  process.env
+);

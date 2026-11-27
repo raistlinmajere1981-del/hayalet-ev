@@ -1,3 +1,63 @@
+# B7 Electron field receiver
+
+27 November 2026 · base `25da72a3` · Linux · Electron 43.3.0 · SM-J701F, Android 9 / API 28. Accepted within the targeted Linux/Electron scope; see independent closure below.
+
+The desktop test launched the built Hayalet Ev main and renderer from a temporary project tree. The ordinary main entry point resolved its own Gaia storage root. The fixture contained a fresh field CA, signing medium, server key and one approved synthetic phone. No Gaia Room was opened. [Desktop test](../scripts/tests/gaia-field.electron-smoke.mjs)
+
+| Scenario | Production receiver observation |
+| --- | --- |
+| T1 · Identity and capabilities | TLS 1.2 with ECDHE-ECDSA and AES-GCM opened a session. Unknown offers and capabilities removed from inventory or permission were absent from the response. Identity mismatches returned 403. Partial and unaccepted sample sets returned 400 before a sidecar was created. |
+| T2 · Values | The shared zero-value packet reached a v3 row with battery 0, vector zeros, `validated=false`, and distinct invalid and missing qualities. The canonical world bytes stayed identical. |
+| T3 · Trust and revocation | The receiver rejected a foreign CA and a missing client key/certificate. The client rejected a wrong SAN. A locally issued, inactive client received 403. Revocation after the handshake prevented replay on that socket. Renewal opened generation two and retired the old grant. |
+| T4 · ACK and ordering | The sender discarded the first response after publication. A byte-identical retry returned the original acceptance time and preserved the file inode. Changed bytes at the same sequence, gaps and old sequences produced conflicts. Repairing an unreadable sidecar allowed the failed sequence to be retried. |
+| T5 · Sample age | Seven subsequent packets reused the same accelerometer event across 70 seconds on the injected central clock. The persisted observation retained its first acceptance and age bound. A conflicting sample produced no write. |
+| T6 · Retirement and restart | The injected clock showed a live session at 34,999 ms and retirement at 35,000 ms. A new session awaiting its first packet suppressed the predecessor’s delayed offline write. Process restarts after a confirmed delivery and after a lost ACK required new sessions. A partially received request closed during quit. |
+
+The boundary tests used real loopback sockets. An 8,192-byte header and 16,384-byte body passed the size checks. One extra byte was rejected. Slow handshakes, headers and bodies closed at the phase deadline. The 17th concurrent connection was refused. The first three requests used the client burst and the next received 429 with an integer five-second wait. A writer held past the ten-second request budget retained one pending slot until release and published nothing. A second owner could acquire the center after drain. The Electron run also exercised application suspend/resume events and default-disabled startup. The power events were dispatched by the test harness. [Receiver regressions](../rooms/gaia-room/scripts/tests/receiver.test.ts)
+
+## SM-J701F field measurement
+
+The disposable application ID `com.hayaletev.gaiaclient.b7probe` isolated the test's Keystore and app-private storage. The normal Client Activity started the production foreground service. The signed installation authorized `accelerometer.xyz.v1` for the synthetic inventory. USB reverse carried mTLS to the production Electron listener. The service reported a matching ACK for sequence 2 and the desktop independently read the following row. [Instrumentation](app/src/androidTest/kotlin/com/hayaletev/gaiaclient/B7Probe.kt) · [USB driver](app/src/test/interop/b7_probe.py)
+
+```json
+{
+  "seq": 2,
+  "acceptedAt": 1795794574120,
+  "value": [
+    -0.0035913025494664907,
+    -0.19393034279346466,
+    9.726444244384766
+  ],
+  "unit": "m/s²",
+  "ageUpperMs": 10296
+}
+```
+
+The age bound includes the central wait since the previous response and the Client's send-to-sample interval. The run verifies delivery of a physical sample. Extended LAN operation, battery cost and hardware suspend remain field measurements for a later milestone.
+
+Cleanup verified closure of the loopback port, restoration of the original reverse list, removal of the disposable packages and their pairing, and absence of a running Client service. All explicit device commands selected the J701F serial. In preliminary full-app runs the shell’s ordinary Capture discovery had access to host ADB, and ADB restarted during cleanup. Those runs cannot exclude a read-only discovery query to the attached J700F. The final harness isolates the Electron child from host executables and ADB path overrides; only the serial-scoped USB driver uses ADB. [Reproduction steps](README.md#b7-production-receiver-measurement)
+
+| Final check | Result |
+| --- | --- |
+| Central Gaia | 194 passed, including the 180 existing tests and 14 B7 regressions |
+| Shared v1 protocol | 11 passed |
+| Android JVM | 121 passed, zero failures, errors or skips |
+| Builds and static checks | Electron main bundle, Android debug and instrumentation APKs, rooms TypeScript, targeted strict ESLint and Prettier passed |
+
+## Independent B7 closure (Nexa)
+
+Independent reruns passed: 194 Gaia regressions, 11 shared protocol tests,
+121 Android JVM tests (the test task was rerun), rooms TypeScript, targeted
+strict ESLint, Prettier, Electron main rebuild and the isolated real Electron
+smoke. The last agent phone log supplies the measured row above; the physical
+phone experiment was not rerun during independent closure. Serial-scoped
+read-only checks confirmed the J701F reverse list was empty, the disposable
+probe packages were absent and no Client service was running. The prior ADB
+discovery limitation is retained. No production source changes or real-world
+data changes were needed for this closure. Full check:all, actual hardware
+suspend, LAN, extended field operation and B8 management UI are not accepted
+by this targeted B7 check.
+
 # B6 Android Client — measurement and compatibility
 
 27 November 2026 · base `d8ada18a` · independent acceptance pending.

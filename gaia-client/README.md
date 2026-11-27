@@ -37,3 +37,15 @@ cd gaia-client
 The installable APK is `app/build/outputs/apk/debug/app-debug.apk`. The JVM suite reads the shared v1 fixtures and starts a temporary Node loopback receiver using the repository's B3/2 issuer and authorization modules. The receiver creates an isolated inventory and signing medium for each run.
 
 For the SM-J701F measurement, install the debug APK and the instrumentation APK under `app/build/outputs/apk/androidTest/debug/` on that serial, then run `python app/src/test/interop/probe.py SERIAL` from this directory. The probe uses disposable app-cache state and test aliases. With a current clock it uses a temporary USB reverse to the loopback receiver. With the observed 2017 clock it measures rejection at import. Device measurements and outstanding verification are in [MEASUREMENT_REPORT.md](MEASUREMENT_REPORT.md).
+
+### B7 production receiver measurement
+
+On Linux, build the Electron main bundle with `npm run electron:build`. With the renderer build available in `dist/renderer`, run `xvfb-run -a node --import tsx scripts/tests/gaia-field.electron-smoke.mjs` from the repository root. The test launches a disposable copy of the built application with an isolated storage root.
+
+For the J701F run, copy the Android project sources and SDK path to a temporary build directory. In that copy's `app/build.gradle.kts`, set `applicationId` to `com.hayaletev.gaiaclient.b7probe` and `testInstrumentationRunner` to `com.hayaletev.gaiaclient.B7Probe`. Keep the original Kotlin namespace. Build `:app:assembleDebug :app:assembleDebugAndroidTest` in one Gradle invocation. From the repository root run the command below with the SM-J701F serial and that build's APK output directory.
+
+```sh
+xvfb-run -a python gaia-client/app/src/test/interop/b7_probe.py SERIAL /path/to/temporary/app/build/outputs/apk
+```
+
+The probe uses its own Android application identity, obtains a USB installation for the synthetic inventory, operates the real Activity and foreground service, and checks both the device ACK and the central v3 row. It removes its reverse and both temporary packages on exit. [B7 measurements](MEASUREMENT_REPORT.md#b7-electron-field-receiver)

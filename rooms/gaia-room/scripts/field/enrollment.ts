@@ -651,33 +651,37 @@ export function resolveActiveAssignmentFromStore(
   return matches[0];
 }
 
+export class FieldAuthorizationDenied extends Error {}
+
 export function verifyActiveAssignment(
   world: World,
   epoch: number,
   assignment: AuthorizationAssignment,
   expected: VerifyAuthorizationExpectation = {}
 ): void {
-  if (assignment.state !== "active") throw new Error("Gaia authorization is not active");
-  if (assignment.projectId !== world.id) throw new Error("Gaia authorization project mismatch");
+  if (assignment.state !== "active")
+    throw new FieldAuthorizationDenied("Gaia authorization is not active");
+  if (assignment.projectId !== world.id)
+    throw new FieldAuthorizationDenied("Gaia authorization project mismatch");
   if (
     assignment.statusEpoch !== epoch ||
     (expected.statusEpoch !== undefined && expected.statusEpoch !== epoch)
   )
-    throw new Error("Gaia authorization is stale for this inventory epoch");
+    throw new FieldAuthorizationDenied("Gaia authorization is stale for this inventory epoch");
   if (
     expected.authorizationGeneration !== undefined &&
     assignment.authorizationGeneration !== expected.authorizationGeneration
   )
-    throw new Error("Gaia authorization generation mismatch");
+    throw new FieldAuthorizationDenied("Gaia authorization generation mismatch");
   const device = Object.hasOwn(world.devices, assignment.deviceId)
     ? world.devices[assignment.deviceId]
     : undefined;
   if (!device || device.source !== "physical")
-    throw new Error("Gaia authorization device mismatch");
+    throw new FieldAuthorizationDenied("Gaia authorization device mismatch");
   if (device.hardwareId !== assignment.hardwareId)
-    throw new Error("Gaia authorization hardware mismatch");
+    throw new FieldAuthorizationDenied("Gaia authorization hardware mismatch");
   if (!assignment.capabilities.every((id) => device.capabilities.includes(id)))
-    throw new Error("Gaia authorization capability mismatch");
+    throw new FieldAuthorizationDenied("Gaia authorization capability mismatch");
 }
 
 export function authorizationCapabilities(

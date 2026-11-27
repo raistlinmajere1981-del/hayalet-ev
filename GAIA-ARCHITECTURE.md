@@ -159,7 +159,9 @@ Bağımsız Client doğrudan Hayalet Ev'e HTTPS/mTLS ile bağlanır. Saha CA'sı
 
 Güvenilen main alıcısı oda oturumu açmadan aynı proje yazıcısına girer. Güncel izin, dünya ve epoch kilit altında yeniden doğrulanır. Measured paket tek yayında bağlantı ve son örnekleri günceller. Dünya revizyonu ve epoch yalnız envanter/dünya kayıt kurallarına tabidir. Renderer tarafında `GaiaStatus` güncellemesinin kaynağı daima `simulated` kalır. Tasarlanan v3 yan dosya, v2 kimlik denetimini, bozuk dosyanın korunmasını ve dünya önce yayın sırasını sürdürür. Sürekli örnek, on-change olayı, bağlantı tazeliği ve ölçüm geçerliliği ayrı gösterilir. [Kimlik, tel şeması ve depolama kuralları](GAIA-CLIENT-PROTOCOL.md)
 
-03-B6 Android tarafında kurulum anahtarı Android Keystore’da, doğrulanmış sertifika ve atama uygulamanın yedekleme dışı deposunda tutulur. `TransportProvider` saha adaptörünü B5 toplama motoruna bağlar. Deney alıcısı yalnız test kaynaklarında çalışır. Üretim alıcısı ve Electron main yaşam döngüsü B7’ye aittir. [Android taşıma sözleşmesi](GAIA-CLIENT-PROTOCOL.md#03-b6--android-kurulum-ve-gönderim)
+03-B6 Android tarafında kurulum anahtarı Android Keystore’da, doğrulanmış sertifika ve atama uygulamanın yedekleme dışı deposunda tutulur. `TransportProvider` saha adaptörünü B5 toplama motoruna bağlar. Deney alıcısı yalnız test kaynaklarında çalışır. [Android taşıma sözleşmesi](GAIA-CLIENT-PROTOCOL.md#03-b6--android-kurulum-ve-gönderim)
+
+03-B7’de Electron main, güvenilen Gaia storage kökünde sertifika zorunlu tek merkez sahibini alır. Odanın açılması saha alımının önkoşulu değildir. B4, etkin atamanın proje kilidi altında B2 fiziksel snapshot yazıcısına girer. Gecikmiş kopuş da aynı kilidi alır ve yeni oturumun ilk paketi henüz diske ulaşmamış olsa bile RAM sahipliğini gözetir. Alıcı kontrolü ve PKI yalnız main’de bulunur. [Alıcı kontratı](GAIA-CLIENT-PROTOCOL.md#03-b7--electron-main-saha-alıcısı)
 
 ## 3. Kabul fixture'ı · sera ve kümes
 

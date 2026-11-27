@@ -651,3 +651,50 @@ export async function reconcileStatuses(
     serializeStatuses(identity, reconcileDeviceStatuses(world, previousIdentity, stored))
   );
 }
+
+// The caller holds the same project lock as session opening and snapshot publication.
+export async function projectPhysicalOffline(
+  dir: string,
+  world: World,
+  epoch: number,
+  retired: {
+    statusEpoch: number;
+    deviceId: string;
+    sessionId: string;
+    lastSeq: number;
+    hardwareId: string;
+    authorizationGeneration: number;
+    installationId: string;
+  },
+  at: number
+): Promise<void> {
+  if (epoch !== retired.statusEpoch) return;
+  const path = join(dir, "device-status.json");
+  const stored = await readStored(path);
+  const identity = deviceStatusIdentity(world, epoch);
+  if (!stored || stored.identity !== identity) return;
+  const active = activeStatuses(world, stored.statuses);
+  const row = active[retired.deviceId];
+  const measured = row?.measured;
+  if (
+    row?.hardwareId !== retired.hardwareId ||
+    measured?.sessionId !== retired.sessionId ||
+    measured.seq !== retired.lastSeq ||
+    measured.authorizationGeneration !== retired.authorizationGeneration ||
+    measured.installationId !== retired.installationId
+  )
+    return;
+  const next = recordStatus(
+    world,
+    active,
+    {
+      kind: "link",
+      source: "measured",
+      state: "offline",
+      deviceId: retired.deviceId,
+      hardwareId: retired.hardwareId,
+    },
+    at
+  );
+  await publish(path, serializeStatuses(identity, next));
+}

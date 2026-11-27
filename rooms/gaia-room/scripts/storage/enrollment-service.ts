@@ -5,6 +5,7 @@ import { readFieldTrust, usesFieldCa } from "./field-trust.ts";
 import { join } from "node:path";
 import { capabilityId } from "../devices/capabilities.ts";
 import {
+  FieldAuthorizationDenied,
   activateAuthorization,
   beginAuthorization,
   completeAuthorization,
@@ -94,7 +95,7 @@ async function withVerifiedAssignment<T>(
       fingerprint,
       expected
     );
-    if (!assignment) throw new Error("Gaia authorization is not active");
+    if (!assignment) throw new FieldAuthorizationDenied("Gaia authorization is not active");
     return await work(document.world, statusEpoch, assignment);
   });
 }
@@ -608,7 +609,11 @@ export async function openFieldAuthority(
           expectation,
           async (world, epoch, assignment) => {
             const trust = await readFieldTrust(storageRoot);
-            verifyFieldPeer(der, { role: "client" }, trust.caCertificate, trust.fingerprint);
+            try {
+              verifyFieldPeer(der, { role: "client" }, trust.caCertificate, trust.fingerprint);
+            } catch (cause) {
+              throw new FieldAuthorizationDenied("Invalid Gaia client certificate", { cause });
+            }
             return work(world, epoch, assignment);
           }
         );
