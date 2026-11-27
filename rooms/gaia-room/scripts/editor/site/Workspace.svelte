@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, untrack } from "svelte";
+  import { onDestroy, tick, untrack } from "svelte";
   import type en from "../../../i18n/en.json";
   import {
     removalPlan,
@@ -24,13 +24,23 @@
   import { signedArea } from "../../spatial/measurements.ts";
   import type { ReferenceBatch, ReferenceEdit } from "../../storage/reference-contract.ts";
   import { command, UnconfirmedCommand, type Opened, type Saved } from "../client.ts";
+  import { FieldStatusReader, fieldCommand } from "../field-client.ts";
   import { referenceImages } from "../reference-images.svelte.ts";
   import { calibrationDraft, calibrationValue, markCalibrationPoint, type CalibrationDraft } from "./calibration.ts";
   import CalibrationImage from "./CalibrationImage.svelte";
   import { commitDraft } from "./draft.ts";
   import { describeError } from "./errors.ts";
+  import {
+    fieldErrorText,
+    nextPhysicalExpiryDelay,
+    parseHttpsOrigin,
+    statusPollMs,
+    type FieldEndpointDraft,
+    type StagedReassign,
+  } from "./field.ts";
   import { revealSelection, type LayerKind } from "./framing.ts";
-  import { StatusSession, nextFreshnessDeadline } from "./status-session.ts";
+  import { nextFreshnessDeadline } from "./status-session.ts";
+  import FieldCenter from "./FieldCenter.svelte";
   import Measurements from "./Measurements.svelte";
   import References from "./References.svelte";
   import Layers from "./Layers.svelte";
@@ -39,15 +49,16 @@
   import Properties from "./Properties.svelte";
   import Overview from "./Overview.svelte";
   import { deviceMarkers, spatialScene } from "./scene.ts";
-  import {
-    deviceHealth,
-    visibleStatuses,
-    type DeviceStatuses,
-    type StatusSnapshot,
-  } from "../../devices/status.ts";
+  import { visibleStatuses, type VirtualUpdate } from "../../devices/status.ts";
+  import type { PhysicalView } from "../../devices/field-view.ts";
   import { deviceName, mountPath, type DeviceEdit } from "../../devices/inventory.ts";
-  import type { VirtualUpdate } from "../../devices/status.ts";
-  import { healthLabel, type DeviceBadge } from "./device-view.ts";
+  import type {
+    FieldOperation,
+    FieldResults,
+    FieldState,
+    ProjectSession,
+  } from "../../field/management-contract.ts";
+  import { deviceBadgeHealth, healthLabel, type DeviceBadge } from "./device-view.ts";
   import "./workspace.css";
 
   let {
@@ -58,6 +69,8 @@
     startEditing,
     initialSelection,
     locale,
+    stagedReassign = $bindable(),
+    endpointDraft = $bindable({ address: "", port: "", origin: "" }),
     onsave,
     onreopen,
     oninterior,
@@ -71,6 +84,8 @@
     startEditing: boolean;
     initialSelection?: Id;
     locale: string;
+    stagedReassign?: StagedReassign;
+    endpointDraft?: FieldEndpointDraft;
     onsave: (batch: SiteBatch | ReferenceBatch, retry: boolean) => Promise<Saved>;
     onreopen: () => Promise<Opened>;
     oninterior: (id: Id) => Promise<void>;
@@ -92,9 +107,17 @@
   let underground = $state(false);
   let hidden = $state.raw<ReadonlySet<Id>>(new Set());
   let focus = $state.raw<{ id?: Id }>({});
-  let statusSnapshot = $state.raw<StatusSnapshot>();
+  let statusView = $state.raw<ReturnType<FieldStatusReader["current"]>>();
   let statusBusy = $state(false);
   let statusError = $state(false);
+  let fieldPanel = $state(false);
+  let fieldState = $state.raw<FieldState>();
+  let fieldReview = $state.raw<FieldResults["inspect"]>();
+  let fieldIssued = $state.raw<{ deviceId: Id; issue: FieldResults["issue"] }>();
+  let fieldBusy = $state(false);
+  let fieldMutationPending = $state(false);
+  let fieldError = $state("");
+  let fieldNotice = $state("");
   let creatingDevice = $state(false);
   let deviceDeletion = $state.raw<Extract<DeviceEdit, { op: "deleteDevice" }>>();
   let placingDevice = $state<Id>();
@@ -130,28 +153,18 @@
   let measurementZ = $state<number | undefined>(0);
   let measurement = $state.raw<V3[]>([]);
   let disposed = false;
-  const status = new StatusSession({
-    read: async ({ project, session, update }) => {
-      const result = await command<{ statuses: DeviceStatuses; revision: number }>("GaiaStatus", {
-        project,
-        session,
-        ...(update ? { update } : {}),
-      });
-      return { statuses: result.statuses ?? {}, revision: result.revision };
-    },
-    active: () => visible && !disposed,
-    now: () => Date.now(),
-    busy: (value) => (statusBusy = value),
-    error: (value) => (statusError = value),
-    observed: (value) => (now = value),
-    snapshot: (value) => (statusSnapshot = value),
-  });
+  let statusRequestId = 0;
+  let fieldRequestId = 0;
+  const statusReader = new FieldStatusReader();
   onDestroy(() => {
     disposed = true;
+    statusRequestId++;
+    fieldRequestId++;
+    statusReader.cancel();
   });
 
   const dirty = $derived(draft !== opened.world || !!working.length || !!pending);
-  const blocked = $derived(saving || !!pending || !!leave || !!deletion || !!deviceDeletion);
+  const blocked = $derived(saving || fieldBusy || !!pending || !!leave || !!deletion || !!deviceDeletion);
   const spatialItems = $derived(spatialScene(draft, hidden, underground));
   const items = $derived(
     editable
@@ -234,30 +247,112 @@
 
   const project = $derived(opened.world.id);
   const session = $derived(opened.session);
-  const statuses = $derived(visibleStatuses(draft, statusSnapshot, statusError));
+  const currentStatusView = $derived(
+    visible &&
+      !editable &&
+      statusView &&
+      statusView.project === project &&
+      statusView.revision === draft.revision
+      ? statusView
+      : undefined
+  );
+  const statuses = $derived(visibleStatuses(draft, currentStatusView, statusError));
+  const physical = $derived<Record<string, PhysicalView>>(
+    !visible || editable || fieldMutationPending || statusError || !currentStatusView
+      ? {}
+      : currentStatusView.physical
+  );
+  const physicalError = $derived(
+    !visible || editable || statusError ? undefined : currentStatusView?.physicalError
+  );
   const states = $derived.by(() => {
     const result = new Map<Id, DeviceBadge>();
     if (!editable)
       for (const [id, device] of Object.entries(draft.devices)) {
-        const health = deviceHealth(device, statuses[id], now);
+        const health = deviceBadgeHealth(id, device, statuses, physical, now);
         result.set(id, { health, label: healthLabel(labels, health) });
       }
     return result;
   });
 
-  $effect(() => {
-    // Reading the revision makes a successful inventory save refetch statuses, because storage
-    // reconciles the sidecar against the newly saved world.
+  function clearStatus(resetError = false) {
+    statusRequestId++;
+    statusReader.cancel();
+    statusView = undefined;
+    statusBusy = false;
+    if (resetError) statusError = false;
+  }
+
+  async function loadStatus(
+    targetProject: string,
+    targetSession: string,
+    update?: VirtualUpdate
+  ): Promise<boolean> {
+    if (!visible || editable || disposed || fieldMutationPending) return false;
+    const requestId = ++statusRequestId;
     const revision = draft.revision;
-    if (!visible || editable) {
-      status.cancel();
+    statusBusy = true;
+    statusError = false;
+    try {
+      const applied = await statusReader.load({ project: targetProject, session: targetSession }, update);
+      if (
+        requestId !== statusRequestId ||
+        !applied ||
+        !visible ||
+        editable ||
+        disposed ||
+        fieldMutationPending ||
+        project !== targetProject ||
+        session !== targetSession ||
+        draft.revision !== revision
+      ) {
+        return false;
+      }
+      statusView = statusReader.current({ project: targetProject, session: targetSession }, revision);
+      now = Date.now();
+      return true;
+    } catch {
+      if (
+        requestId !== statusRequestId ||
+        !visible ||
+        editable ||
+        disposed ||
+        fieldMutationPending ||
+        project !== targetProject ||
+        session !== targetSession
+      ) {
+        return false;
+      }
+      statusError = true;
+      statusView = undefined;
+      return false;
+    } finally {
+      if (requestId === statusRequestId) statusBusy = false;
+    }
+  }
+
+  $effect(() => {
+    // Reading revision makes an inventory or pairing save refetch statuses cleanly.
+    const revision = draft.revision;
+    const currentProject = project;
+    const currentSession = session;
+    const hasDevices = Object.keys(draft.devices).length > 0;
+    if (!visible || editable || fieldMutationPending) {
+      clearStatus(true);
       return;
     }
     now = Date.now();
-    if (revision >= 0 && untrack(() => Object.keys(draft.devices).length))
-      void status.load(project, session);
-    else statusBusy = false;
-    return () => status.cancel();
+    if (revision >= 0 && hasDevices) void loadStatus(currentProject, currentSession);
+    else clearStatus(false);
+    const poll = setInterval(() => {
+      if (revision >= 0 && Object.keys(draft.devices).length > 0 && !statusBusy) {
+        void loadStatus(currentProject, currentSession);
+      }
+    }, statusPollMs);
+    return () => {
+      clearInterval(poll);
+      clearStatus(true);
+    };
   });
 
   $effect(() => {
@@ -268,9 +363,277 @@
     return () => clearTimeout(timer);
   });
 
+  $effect(() => {
+    if (!visible || editable) return;
+    const delay = nextPhysicalExpiryDelay(physical);
+    if (delay === undefined) return;
+    const timer = setTimeout(() => {
+      statusView = statusReader.current({ project, session }, draft.revision);
+    }, delay);
+    return () => clearTimeout(timer);
+  });
+
+  let lastFieldProject = untrack(() => opened.world.id);
+  $effect(() => {
+    if (project === lastFieldProject) return;
+    lastFieldProject = project;
+    fieldRequestId++;
+    fieldBusy = false;
+    fieldMutationPending = false;
+    fieldState = undefined;
+    fieldReview = undefined;
+    fieldIssued = undefined;
+    fieldError = "";
+    fieldNotice = "";
+  });
+
+  function syncEndpointDraft(endpoint?: FieldState["endpoint"]) {
+    if (
+      endpoint &&
+      !endpointDraft.address.trim() &&
+      !endpointDraft.port.trim() &&
+      !endpointDraft.origin.trim()
+    ) {
+      endpointDraft = {
+        address: endpoint.address,
+        port: String(endpoint.port),
+        origin: endpoint.origin,
+      };
+    }
+  }
+
+  async function reopenProject() {
+    const prevSelected = selected;
+    const prevEditable = editable;
+    const reopened = await onreopen();
+    draft = reopened.world;
+    edits = [];
+    pending = undefined;
+    if (prevSelected && (draft.nodes[prevSelected] || draft.devices[prevSelected])) {
+      selected = prevSelected;
+    } else if (selected && !draft.nodes[selected] && !draft.devices[selected]) {
+      selected = undefined;
+    }
+    if (selectedReference && !draft.references[selectedReference]) {
+      selectedReference = undefined;
+    }
+    editable = prevEditable;
+    await tick();
+    return reopened;
+  }
+
+  async function readFieldStateOnce(
+    scope: ProjectSession,
+    explicitOrigin?: string
+  ): Promise<FieldState | undefined> {
+    const parsedOrigin = parseHttpsOrigin(explicitOrigin ?? endpointDraft.origin);
+    const reply = await fieldCommand(scope, {
+      action: "state",
+      ...(parsedOrigin.ok ? { origin: parsedOrigin.origin } : {}),
+    });
+    if (disposed || project !== scope.project || session !== scope.session) return undefined;
+    if (!reply.ok) return undefined;
+    fieldState = reply.data;
+    syncEndpointDraft(reply.data.endpoint);
+    return reply.data;
+  }
+
+  async function recoverAfterFieldError(scope: ProjectSession) {
+    clearStatus();
+    fieldReview = undefined;
+    fieldIssued = undefined;
+    fieldState = undefined;
+    try {
+      const reopened = await reopenProject();
+      const nextScope = { project: reopened.world.id, session: reopened.session };
+      if (!disposed && project === nextScope.project && session === nextScope.session) {
+        try {
+          await readFieldStateOnce(nextScope);
+        } catch {
+          fieldState = undefined;
+        }
+        if (visible && !editable && Object.keys(draft.devices).length > 0 && !statusBusy) {
+          void loadStatus(nextScope.project, nextScope.session);
+        }
+      }
+    } catch {
+      void scope;
+    }
+  }
+
+  async function refreshFieldState(explicitOrigin?: string) {
+    if (disposed || fieldBusy) return;
+    const reqId = ++fieldRequestId;
+    const scope = { project, session };
+    fieldBusy = true;
+    fieldError = "";
+    fieldNotice = "";
+    const parsedOrigin = parseHttpsOrigin(explicitOrigin ?? endpointDraft.origin);
+    try {
+      const reply = await fieldCommand(scope, {
+        action: "state",
+        ...(parsedOrigin.ok ? { origin: parsedOrigin.origin } : {}),
+      });
+      if (reqId !== fieldRequestId || disposed || project !== scope.project || session !== scope.session) {
+        return;
+      }
+      if (reply.ok) {
+        fieldState = reply.data;
+        syncEndpointDraft(reply.data.endpoint);
+        return;
+      }
+      if (reply.code === "cancelled") {
+        fieldNotice = fieldErrorText("cancelled", labels);
+        return;
+      }
+      fieldError = fieldErrorText(reply.code, labels);
+      if (reply.code !== "busy") await recoverAfterFieldError(scope);
+    } catch {
+      if (reqId !== fieldRequestId || disposed || project !== scope.project || session !== scope.session) {
+        return;
+      }
+      fieldError = fieldErrorText("transport", labels);
+      await recoverAfterFieldError(scope);
+    } finally {
+      if (reqId === fieldRequestId) fieldBusy = false;
+    }
+  }
+
+  async function runFieldOperation(operation: FieldOperation, targetDeviceId?: Id) {
+    if (disposed || fieldBusy) return;
+    const reqId = ++fieldRequestId;
+    const scope = { project, session };
+    const clearsView =
+      operation.action === "enroll" ||
+      operation.action === "complete" ||
+      operation.action === "revoke";
+    const hardwareBefore =
+      operation.action === "enroll" ? draft.devices[operation.deviceId]?.hardwareId : undefined;
+    if (clearsView) {
+      fieldMutationPending = true;
+      clearStatus();
+    }
+    fieldBusy = true;
+    fieldError = "";
+    fieldNotice = "";
+    try {
+      const reply = await fieldCommand(scope, operation);
+      if (reqId !== fieldRequestId || disposed || project !== scope.project || session !== scope.session) {
+        return;
+      }
+      if (!reply.ok) {
+        if (reply.code === "cancelled") {
+          fieldNotice = fieldErrorText("cancelled", labels);
+          await readFieldStateOnce(scope).catch(() => undefined);
+          if (clearsView && visible && !editable && Object.keys(draft.devices).length > 0 && !statusBusy) {
+            void loadStatus(scope.project, scope.session);
+          }
+          return;
+        }
+        fieldError = fieldErrorText(reply.code, labels);
+        if (reply.code === "busy") {
+          await readFieldStateOnce(scope).catch(() => undefined);
+          return;
+        }
+        await recoverAfterFieldError(scope);
+        return;
+      }
+
+      if (
+        operation.action === "provision" ||
+        operation.action === "rotateServer" ||
+        operation.action === "start" ||
+        operation.action === "stop"
+      ) {
+        const origin =
+          operation.action === "provision" || operation.action === "rotateServer"
+            ? operation.origin
+            : operation.action === "start"
+              ? operation.endpoint.origin
+              : undefined;
+        if (operation.action === "start") {
+          endpointDraft = {
+            address: operation.endpoint.address,
+            port: String(operation.endpoint.port),
+            origin: operation.endpoint.origin,
+          };
+        }
+        await readFieldStateOnce(scope, origin).catch(() => undefined);
+        return;
+      }
+
+      if (operation.action === "inspect") {
+        fieldReview = reply.data as FieldResults["inspect"];
+        fieldIssued = undefined;
+        if (!endpointDraft.origin.trim()) {
+          endpointDraft = { ...endpointDraft, origin: operation.origin };
+        }
+        return;
+      }
+
+      if (operation.action === "issue") {
+        const ownerDevice = targetDeviceId ?? fieldReview?.approval.deviceId ?? selected;
+        fieldIssued = ownerDevice
+          ? { deviceId: ownerDevice, issue: reply.data as FieldResults["issue"] }
+          : undefined;
+        fieldReview = undefined;
+        return;
+      }
+
+      if (operation.action === "enroll") {
+        const grant = reply.data as FieldResults["enroll"];
+        fieldIssued = undefined;
+        fieldReview = undefined;
+        if (stagedReassign && stagedReassign.hardwareId === grant.hardwareId) {
+          stagedReassign = undefined;
+        }
+        if (hardwareBefore !== grant.hardwareId) {
+          const reopened = await reopenProject();
+          const nextScope = { project: reopened.world.id, session: reopened.session };
+          if (!disposed && project === nextScope.project && session === nextScope.session) {
+            await readFieldStateOnce(nextScope).catch(() => undefined);
+            if (visible && !editable && Object.keys(draft.devices).length > 0 && !statusBusy) {
+              void loadStatus(nextScope.project, nextScope.session);
+            }
+          }
+          return;
+        }
+        await readFieldStateOnce(scope).catch(() => undefined);
+        if (visible && !editable && Object.keys(draft.devices).length > 0 && !statusBusy) {
+          void loadStatus(scope.project, scope.session);
+        }
+        return;
+      }
+
+      if (operation.action === "complete" || operation.action === "revoke") {
+        const updated = reply.data as FieldResults["complete"];
+        fieldReview = undefined;
+        fieldIssued = undefined;
+        if (operation.action === "revoke" && stagedReassign?.assignmentId === updated.id) {
+          stagedReassign = undefined;
+        }
+        await readFieldStateOnce(scope).catch(() => undefined);
+        if (visible && !editable && Object.keys(draft.devices).length > 0 && !statusBusy) {
+          void loadStatus(scope.project, scope.session);
+        }
+      }
+    } catch {
+      if (reqId !== fieldRequestId || disposed || project !== scope.project || session !== scope.session) {
+        return;
+      }
+      fieldError = fieldErrorText("transport", labels);
+      await recoverAfterFieldError(scope);
+    } finally {
+      if (reqId === fieldRequestId) {
+        fieldBusy = false;
+        fieldMutationPending = false;
+      }
+    }
+  }
+
   async function publish(update: VirtualUpdate) {
     if (!visible || editable || blocked || statusBusy) return;
-    await status.load(opened.world.id, opened.session, update);
+    await loadStatus(opened.world.id, opened.session, update);
   }
 
   function manage(edits: SiteEdit[]) {
@@ -283,12 +646,16 @@
       if (edit.op === "createDevice") {
         creatingDevice = false;
         selected = edit.id;
-      } else if (edit.op === "deleteDevice" && selected === edit.id) selected = undefined;
-      else if (edit.op === "mountDevice" && edit.mount && placingDevice === edit.id) {
+      } else if (edit.op === "deleteDevice") {
+        if (selected === edit.id) selected = undefined;
+        if (fieldReview?.approval.deviceId === edit.id) fieldReview = undefined;
+        if (fieldIssued?.deviceId === edit.id) fieldIssued = undefined;
+      } else if (edit.op === "mountDevice" && edit.mount && placingDevice === edit.id) {
         placingDevice = undefined;
         focusSelection(edit.id);
       }
     }
+    if (fieldState) void readFieldStateOnce({ project, session }).catch(() => undefined);
   }
 
   function toggleKind(kind: LayerKind) {
@@ -320,6 +687,7 @@
     three = false;
     measuring = false;
     referencePanel = false;
+    fieldPanel = false;
   }
 
   function placeDevice(point: V3) {
@@ -575,7 +943,7 @@
   }
 
   function request(action: () => void | Promise<void>) {
-    if (saving) return;
+    if (saving || fieldBusy) return;
     if (dirty) leave = action;
     else void transition(action);
   }
@@ -601,12 +969,34 @@
   }
 
   function mode(value: boolean) {
-    if (editable === value) return;
+    if (editable === value && !fieldPanel) return;
     request(() => {
       if (value && selected && draft.devices[selected]) selected = draft.devices[selected]?.mount;
       editable = value;
+      fieldPanel = false;
       three = false;
     });
+  }
+
+  function openFieldCenter() {
+    if (blocked) return;
+    request(() => {
+      editable = false;
+      three = false;
+      measuring = false;
+      referencePanel = false;
+      calibration = undefined;
+      placingDevice = undefined;
+      creatingDevice = false;
+      fieldPanel = true;
+      void refreshFieldState();
+    });
+  }
+
+  function openPairing() {
+    fieldError = "";
+    fieldNotice = "";
+    if (!fieldState && !fieldBusy) void refreshFieldState();
   }
 
   function edit(edit: SiteEdit, input: HTMLInputElement) {
@@ -627,6 +1017,9 @@
     placingDevice = undefined;
     creatingDevice = false;
     referencePanel = false;
+    fieldPanel = false;
+    fieldError = "";
+    fieldNotice = "";
     calibration = undefined;
     measuring = false;
   }
@@ -635,6 +1028,7 @@
     if (blocked || tool) return;
     three = false;
     measuring = false;
+    fieldPanel = false;
     referencePanel = true;
     if (selectedReference !== id) calibration = undefined;
     selectedReference = id;
@@ -674,6 +1068,7 @@
     if (measuring) {
       three = false;
       referencePanel = false;
+      fieldPanel = false;
       calibration = undefined;
       measurement = [];
       measurementZ = 0;
@@ -731,19 +1126,28 @@
     <nav aria-label="Gaia">
       <button
         type="button"
-        class:active={!editable}
-        aria-pressed={!editable}
+        class:active={!editable && !fieldPanel}
+        aria-pressed={!editable && !fieldPanel}
         onclick={() => mode(false)}
       >
         {labels.title}
       </button>
       <button
         type="button"
-        class:active={editable}
-        aria-pressed={editable}
+        class:active={editable && !fieldPanel}
+        aria-pressed={editable && !fieldPanel}
         onclick={() => mode(true)}
       >
         {labels.studio}
+      </button>
+      <button
+        type="button"
+        class:active={fieldPanel}
+        aria-pressed={fieldPanel}
+        disabled={blocked}
+        onclick={openFieldCenter}
+      >
+        {labels.fieldCenter}
       </button>
     </nav>
     <div class="project-actions">
@@ -1062,9 +1466,11 @@
           ? labels.references
           : measuring
             ? labels.measure
-            : editable
-              ? labels.inspector
-              : labels.management}
+            : fieldPanel
+              ? labels.fieldCenter
+              : editable
+                ? labels.inspector
+                : labels.management}
       </h2>
       {#if referencePanel}
         {#key (selectedReference ?? "") + ":" + draft.revision}
@@ -1107,6 +1513,27 @@
           onundo={() => (measurement = measurement.slice(0, -1))}
           onclear={() => (measurement = [])}
         />
+      {:else if fieldPanel}
+        <FieldCenter
+          {labels}
+          world={draft}
+          state={fieldState}
+          bind:endpointDraft
+          busy={blocked || fieldBusy}
+          error={fieldError}
+          notice={fieldNotice}
+          onrefresh={refreshFieldState}
+          onprovision={(origin) => runFieldOperation({ action: "provision", origin })}
+          onrotate={(origin) => runFieldOperation({ action: "rotateServer", origin })}
+          onstart={(endpoint) => runFieldOperation({ action: "start", endpoint })}
+          onstop={() => runFieldOperation({ action: "stop" })}
+          onselectdevice={(id) => pick(id)}
+          onclose={() => {
+            fieldPanel = false;
+            fieldError = "";
+            fieldNotice = "";
+          }}
+        />
       {:else if !editable}
         {#key selected}
           <Overview
@@ -1115,12 +1542,22 @@
             {labels}
             {locale}
             {statuses}
+            {physical}
+            {physicalError}
             {now}
             disabled={blocked || !!placingDevice}
             {statusBusy}
             {statusError}
             {visibleIds}
             creating={creatingDevice}
+            {fieldState}
+            {endpointDraft}
+            {fieldReview}
+            {fieldIssued}
+            {stagedReassign}
+            {fieldBusy}
+            {fieldError}
+            {fieldNotice}
             oncancel={() => (creatingDevice = false)}
             onapply={(edit) => manage([edit])}
             onselect={pick}
@@ -1128,6 +1565,18 @@
             onplace={startDevicePlacement}
             ondelete={(edit) => (deviceDeletion = edit)}
             onpublish={publish}
+            onopenpairing={openPairing}
+            onopenfieldcenter={openFieldCenter}
+            oninspect={(input) => runFieldOperation(input)}
+            onissue={(reviewId) => runFieldOperation({ action: "issue", reviewId })}
+            ondiscardreview={() => (fieldReview = undefined)}
+            onenroll={(deviceId) => runFieldOperation({ action: "enroll", deviceId })}
+            oncomplete={(deviceId, assignmentId) =>
+              runFieldOperation({ action: "complete", deviceId, assignmentId })}
+            onrevoke={(deviceId, assignmentId) =>
+              runFieldOperation({ action: "revoke", deviceId, assignmentId })}
+            onstage={(value) => (stagedReassign = value)}
+            onclearstage={() => (stagedReassign = undefined)}
           />
         {/key}
       {:else if selected && selectedNode}

@@ -7,6 +7,7 @@
   import type { EditBatch } from "./session.ts";
   import type { SiteBatch } from "../spatial/site-edits.ts";
   import type { ReferenceBatch } from "../storage/reference-contract.ts";
+  import type { FieldEndpointDraft, StagedReassign } from "./site/field.ts";
   import Workspace from "./site/Workspace.svelte";
 
   let locale = $state<"en" | "tr">("en");
@@ -26,6 +27,8 @@
   let hostVisible = $state(false);
   let documentVisible = $state(true);
   let disposed = $state(false);
+  let stagedReassign = $state<StagedReassign>();
+  let fieldEndpointDraft = $state<FieldEndpointDraft>({ address: "", port: "", origin: "" });
   const visible = $derived(hostVisible && documentVisible && !disposed);
 
   async function refresh() {
@@ -151,6 +154,8 @@
 
   function closeRoom() {
     disposed = true;
+    stagedReassign = undefined;
+    fieldEndpointDraft = { address: "", port: "", origin: "" };
     roomBridge()?.close();
   }
 </script>
@@ -185,6 +190,8 @@
       startEditing={!!siteSelection}
       initialSelection={siteSelection}
       {locale}
+      bind:stagedReassign
+      bind:endpointDraft={fieldEndpointDraft}
       onsave={save}
       onreopen={reopenSite}
       oninterior={openInterior}

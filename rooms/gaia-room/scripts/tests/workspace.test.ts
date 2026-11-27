@@ -1,13 +1,30 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import en from "../../i18n/en.json" with { type: "json" };
+import tr from "../../i18n/tr.json" with { type: "json" };
+import { FieldStatusReader } from "../editor/field-client.ts";
 import { markCalibrationPoint } from "../editor/site/calibration.ts";
+import { deviceBadgeHealth } from "../editor/site/device-view.ts";
 import { commitDraft } from "../editor/site/draft.ts";
 import { describeError } from "../editor/site/errors.ts";
+import {
+  deviceAssignments,
+  fieldErrorText,
+  isFieldReply,
+  latestEstimatedMeasurement,
+  nextPhysicalExpiryDelay,
+  parseHttpsOrigin,
+  physicalConnection,
+  physicalHealth,
+  validateFieldEndpoint,
+} from "../editor/site/field.ts";
 import { revealSelection } from "../editor/site/framing.ts";
 import { StatusSession, nextFreshnessDeadline } from "../editor/site/status-session.ts";
+import type { GaiaStatusReply, PhysicalView } from "../devices/field-view.ts";
 import { freshForMs, type DeviceStatuses, type StatusSnapshot } from "../devices/status.ts";
 import { createSiteFixture } from "../spatial/fixture.ts";
 import type { SiteEdit } from "../spatial/site-edits.ts";
+import type { Device } from "../spatial/world.ts";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -222,4 +239,324 @@ test("error descriptions keep the cause and fall back without leaking Error pref
   assert.equal(describeError({ message: "structured" }, "Unknown"), "structured");
   assert.equal(describeError(undefined, "Unknown"), "Unknown");
   assert.equal(describeError(new Error(""), "Unknown"), "Unknown");
+});
+
+test("field endpoint validation rejects wildcard binds, mismatched ports and non-canonical origins", () => {
+  assert.deepEqual(parseHttpsOrigin("https://127.0.0.1:8443"), {
+    ok: true,
+    host: "127.0.0.1",
+    port: 8443,
+    origin: "https://127.0.0.1:8443",
+  });
+  assert.deepEqual(parseHttpsOrigin("https://gaia.local"), {
+    ok: true,
+    host: "gaia.local",
+    port: 443,
+    origin: "https://gaia.local",
+  });
+  assert.deepEqual(parseHttpsOrigin("https://[::1]:8443"), {
+    ok: true,
+    host: "::1",
+    port: 8443,
+    origin: "https://[::1]:8443",
+  });
+  assert.equal(parseHttpsOrigin("http://127.0.0.1:8443").ok, false);
+  assert.equal(parseHttpsOrigin("https://127.0.0.1:8443/").ok, false);
+  assert.equal(parseHttpsOrigin(" https://127.0.0.1:8443").ok, false);
+  assert.equal(parseHttpsOrigin("https://127.0.0.1:0").ok, false);
+
+  assert.deepEqual(
+    validateFieldEndpoint({
+      address: "127.0.0.1",
+      port: "8443",
+      origin: "https://127.0.0.1:8443",
+    }),
+    { ok: true, endpoint: { address: "127.0.0.1", port: 8443, origin: "https://127.0.0.1:8443" } }
+  );
+  assert.deepEqual(
+    validateFieldEndpoint({
+      address: "fe80::1%eth0",
+      port: "443",
+      origin: "https://gaia.example.test",
+    }),
+    {
+      ok: true,
+      endpoint: { address: "fe80::1%eth0", port: 443, origin: "https://gaia.example.test" },
+    }
+  );
+  assert.equal(
+    validateFieldEndpoint({ address: "0.0.0.0", port: "8443", origin: "https://127.0.0.1:8443" })
+      .ok,
+    false
+  );
+  assert.equal(
+    validateFieldEndpoint({ address: "::", port: "8443", origin: "https://[::1]:8443" }).ok,
+    false
+  );
+  assert.equal(
+    validateFieldEndpoint({
+      address: "::ffff:0.0.0.0",
+      port: "8443",
+      origin: "https://127.0.0.1:8443",
+    }).ok,
+    false
+  );
+  assert.equal(
+    validateFieldEndpoint({ address: "127.0.0.1", port: "8444", origin: "https://127.0.0.1:8443" })
+      .ok,
+    false
+  );
+});
+
+test("physical connection, health, badge delegation and zero timestamps evaluate accurately", () => {
+  const unbound: Device = {
+    role: "sensor",
+    source: "physical",
+    capabilities: ["battery.level.v1"],
+  };
+  const bound: Device = {
+    ...unbound,
+    hardwareId: "hw-1",
+    capabilities: ["battery.level.v1", "accelerometer.xyz.v1"],
+  };
+  const cameraOnly: Device = {
+    role: "client",
+    source: "physical",
+    hardwareId: "cam-1",
+    capabilities: ["camera.view.v1"],
+  };
+  const onlineZeroView: PhysicalView = {
+    source: "measured",
+    connection: "online",
+    linkRemainingMs: 12_000,
+    lastContactAt: 0,
+    observations: {
+      "battery.level.v1": {
+        quality: "valid",
+        value: 0,
+        unit: "%",
+        receivedAt: 0,
+        at: 0,
+        freshness: "fresh",
+        freshRemainingMs: 5_000,
+      },
+      "accelerometer.xyz.v1": {
+        quality: "valid",
+        value: [0, 0, 0],
+        unit: "m/s2",
+        receivedAt: 0,
+        at: 0,
+        freshness: "fresh",
+        freshRemainingMs: 5_000,
+      },
+    },
+  };
+
+  assert.equal(physicalConnection(unbound, onlineZeroView), "unbound");
+  assert.equal(physicalHealth(unbound, onlineZeroView), "unbound");
+  assert.equal(physicalConnection(bound, undefined), "unknown");
+  assert.equal(physicalHealth(bound, undefined), "unknown");
+  assert.equal(physicalHealth(bound, onlineZeroView), "online");
+  assert.equal(latestEstimatedMeasurement(onlineZeroView), 0);
+  assert.equal(
+    physicalHealth(cameraOnly, {
+      source: "measured",
+      connection: "online",
+      linkRemainingMs: 5000,
+      observations: {},
+    }),
+    "online"
+  );
+  assert.equal(
+    physicalHealth(bound, {
+      source: "measured",
+      connection: "online",
+      linkRemainingMs: 5000,
+      observations: {},
+    }),
+    "noData"
+  );
+  assert.equal(
+    physicalHealth(bound, {
+      ...onlineZeroView,
+      observations: {
+        ...onlineZeroView.observations,
+        "accelerometer.xyz.v1": {
+          quality: "invalid",
+          value: null,
+          unit: "m/s2",
+          receivedAt: 100,
+          freshness: "fresh",
+          freshRemainingMs: 5000,
+        },
+      },
+    }),
+    "invalid"
+  );
+  assert.equal(
+    physicalHealth(bound, {
+      ...onlineZeroView,
+      connection: "offline",
+      linkRemainingMs: 0,
+    }),
+    "offline"
+  );
+
+  assert.equal(
+    deviceBadgeHealth("phys-1", bound, {}, { "phys-1": onlineZeroView }, 1000),
+    "online"
+  );
+  assert.equal(
+    nextPhysicalExpiryDelay({
+      a: onlineZeroView,
+      b: {
+        source: "measured",
+        connection: "offline",
+        linkRemainingMs: 0,
+        observations: {
+          "signal.read.v1": {
+            quality: "valid",
+            value: -80,
+            unit: "dBm",
+            receivedAt: 1,
+            at: 1,
+            freshness: "stale",
+            freshRemainingMs: 0,
+          },
+        },
+      },
+    }),
+    5_000
+  );
+  assert.equal(nextPhysicalExpiryDelay({}), undefined);
+});
+
+test("FieldStatusReader ages physical views on monotonic time and drops cancelled or stale-scope results", async () => {
+  let monoNow = 1000;
+  const requests: { scope: { project: string; session: string }; update?: unknown }[] = [];
+  const pending = deferred<GaiaStatusReply>();
+  const reader = new FieldStatusReader(
+    (scope, update) => {
+      requests.push({ scope, update });
+      return pending.promise;
+    },
+    () => monoNow
+  );
+
+  const loadPromise = reader.load(
+    { project: "p1", session: "s1" },
+    { deviceId: "v1", kind: "link", state: "online" }
+  );
+  monoNow = 1500;
+  pending.resolve({
+    revision: 0,
+    statuses: {},
+    physical: {
+      p1dev: {
+        source: "measured",
+        connection: "online",
+        linkRemainingMs: 4000,
+        lastContactAt: 5000,
+        observations: {
+          "battery.level.v1": {
+            quality: "valid",
+            value: 0,
+            unit: "%",
+            receivedAt: 5000,
+            at: 5000,
+            freshness: "fresh",
+            freshRemainingMs: 8000,
+          },
+          "proximity.state.v1": {
+            quality: "missing",
+            value: null,
+            unit: "state",
+            receivedAt: 5000,
+            freshness: "noData",
+            freshRemainingMs: 0,
+          },
+        },
+      },
+    },
+  });
+  assert.equal(await loadPromise, true);
+  assert.equal(requests.length, 1);
+
+  const initial = reader.current({ project: "p1", session: "s1" }, 0);
+  assert.equal(initial?.physical["p1dev"]?.connection, "online");
+  assert.equal(initial?.physical["p1dev"]?.linkRemainingMs, 3500);
+  assert.equal(initial?.physical["p1dev"]?.observations["battery.level.v1"]?.freshness, "fresh");
+  assert.equal(initial?.physical["p1dev"]?.observations["proximity.state.v1"]?.freshness, "noData");
+  assert.equal(reader.current({ project: "p1", session: "s1" }, 1), undefined);
+  assert.equal(reader.current({ project: "p2", session: "s1" }, 0), undefined);
+
+  monoNow = 5000;
+  const aged = reader.current({ project: "p1", session: "s1" }, 0);
+  assert.equal(aged?.physical["p1dev"]?.connection, "offline");
+  assert.equal(aged?.physical["p1dev"]?.observations["battery.level.v1"]?.freshness, "stale");
+
+  const delayed = deferred<GaiaStatusReply>();
+  const reader2 = new FieldStatusReader(
+    async () => delayed.promise,
+    () => 2000
+  );
+  const cancelledLoad = reader2.load({ project: "p1", session: "s1" });
+  reader2.cancel();
+  delayed.resolve({
+    revision: 0,
+    statuses: {},
+    physicalError: "authorization_unavailable",
+    physical: {},
+  });
+  assert.equal(await cancelledLoad, false);
+  assert.equal(reader2.current({ project: "p1", session: "s1" }, 0), undefined);
+});
+
+test("field contract helpers validate replies, assignments and localized EN/TR keys", () => {
+  assert.equal(isFieldReply({ ok: true, data: { listening: true } }), true);
+  assert.equal(isFieldReply({ ok: false, code: "cancelled" }), true);
+  assert.equal(isFieldReply({ ok: true }), false);
+  assert.equal(isFieldReply(null), false);
+
+  const pair = deviceAssignments(
+    [
+      {
+        id: "a1",
+        deviceId: "d1",
+        hardwareId: "h1",
+        fingerprint: "fp1",
+        installationId: "inst1",
+        authorizationGeneration: 1,
+        capabilities: ["battery.level.v1"],
+        state: "pending",
+      },
+      {
+        id: "a2",
+        deviceId: "d1",
+        hardwareId: "h1",
+        fingerprint: "fp2",
+        installationId: "inst1",
+        authorizationGeneration: 0,
+        capabilities: ["battery.level.v1"],
+        state: "active",
+      },
+      {
+        id: "a3",
+        deviceId: "d2",
+        hardwareId: "h2",
+        fingerprint: "fp3",
+        installationId: "inst2",
+        authorizationGeneration: 0,
+        capabilities: ["battery.level.v1"],
+        state: "active",
+      },
+    ],
+    "d1"
+  );
+  assert.equal(pair.active?.id, "a2");
+  assert.equal(pair.pending?.id, "a1");
+
+  assert.equal(fieldErrorText("cancelled", en.site).length > 0, true);
+  assert.equal(fieldErrorText("transport", tr.site).length > 0, true);
+  assert.deepEqual(Object.keys(en.site).sort(), Object.keys(tr.site).sort());
 });

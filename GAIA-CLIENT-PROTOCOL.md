@@ -445,7 +445,7 @@ const phone = view?.physical[deviceId];
 const sample = phone?.observations["battery.level.v1"];
 ```
 
-Görünürken ilk okumayı hemen yap, ardından en geç 10 saniyede bir yenile. Yeniden çizimde `reader.current` çağır. Bu çağrı istek başlangıcından itibaren geçen **renderer monotonik süresini** main'in `linkRemainingMs` ve `freshRemainingMs` bütçelerinden düşer. Kalite (`valid/invalid/missing`), tazelik (`fresh/stale/noData`) ve bağlantı (`online/offline/unknown`) ayrı alanlardır. `at` ve `receivedAt` yalnız gösterim içindir. Gizlenme, proje değişimi veya yetki değişikliğinde `reader.cancel()` ile belleği temizle ve dönüşte tekrar yükle. Envanter revizyonunu değiştiren bir eşleme sonrası projeyi yeniden aç. [Görünüm tipleri](rooms/gaia-room/scripts/devices/field-view.ts)
+Görünürken ilk okumayı hemen yap, ardından en geç 10 saniyede bir yenile. Yeniden çizimde `reader.current` çağır. Bu çağrı istek başlangıcından itibaren geçen **renderer monotonik süresini** main'in `linkRemainingMs` ve `freshRemainingMs` bütçelerinden düşer. Kalite (`valid/invalid/missing`), tazelik (`fresh/stale/noData`) ve bağlantı (`online/offline/unknown`) ayrı alanlardır. `at` ve `receivedAt` yalnız gösterim içindir. Gizlenme, proje değişimi veya yetki değişikliğinde `reader.cancel()` ile belleği temizle ve dönüşte tekrar yükle. Envanter revizyonunu değiştiren bir eşleme sonrası projeyi yeniden aç. [Görünüm tipleri](rooms/gaia-room/scripts/devices/field-view.ts) · [Saha UI yardımcıları](rooms/gaia-room/scripts/editor/site/field.ts) · [Saha merkezi UI](rooms/gaia-room/scripts/editor/site/FieldCenter.svelte) · [Cihaz eşleme UI](rooms/gaia-room/scripts/editor/site/FieldPairing.svelte)
 
 ### Pozitif ve negatif kabul senaryoları
 

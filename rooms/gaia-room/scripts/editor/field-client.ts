@@ -1,5 +1,6 @@
 import type { FieldOperation, FieldReply, ProjectSession } from "../field/management-contract.ts";
 import { agePhysicalView, type GaiaStatusReply } from "../devices/field-view.ts";
+import type { VirtualUpdate } from "../devices/status.ts";
 import { command } from "./client.ts";
 
 export function fieldCommand<T extends FieldOperation>(scope: ProjectSession, operation: T) {
@@ -13,7 +14,8 @@ export function fieldCommand<T extends FieldOperation>(scope: ProjectSession, op
 export class FieldStatusReader {
   private generation = 0;
   constructor(
-    private read = (scope: ProjectSession) => command<GaiaStatusReply>("GaiaStatus", scope),
+    private read = (scope: ProjectSession, update?: VirtualUpdate) =>
+      command<GaiaStatusReply>("GaiaStatus", update ? { ...scope, update } : scope),
     private mono = () => performance.now()
   ) {}
 
@@ -24,11 +26,11 @@ export class FieldStatusReader {
     delete this.snapshot;
   }
 
-  async load({ project, session }: ProjectSession) {
+  async load({ project, session }: ProjectSession, update?: VirtualUpdate) {
     const generation = ++this.generation;
     const sent = this.mono();
     try {
-      const reply = await this.read({ project, session });
+      const reply = await this.read({ project, session }, update);
       if (generation !== this.generation) return false;
       this.snapshot = { scope: { project, session }, sent, reply };
       return true;
@@ -49,7 +51,7 @@ export class FieldStatusReader {
     )
       return;
     const elapsed = this.mono() - snapshot.sent;
-    const { statuses, physical, physicalError } = snapshot.reply;
+    const { statuses = {}, physical = {}, physicalError } = snapshot.reply;
     return {
       ...(physicalError ? { physicalError } : {}),
       project: scope.project,

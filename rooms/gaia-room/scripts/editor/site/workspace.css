@@ -69,6 +69,7 @@
 }
 .gaia-workspace :is(.project-context, .project-actions, nav) {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--gaia-space-9);
 }
@@ -500,6 +501,7 @@
 .gaia-workspace .device-id {
   font-family: monospace;
   font-size: var(--gaia-font-compact);
+  overflow-wrap: anywhere;
 }
 .gaia-workspace :is(.device-form, .device-form fieldset, .virtual-input form, .management-checks) {
   min-width: 0;
@@ -544,4 +546,40 @@
 }
 .gaia-workspace .placement-area {
   max-width: 100%;
+}
+.gaia-workspace .field-heading-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gaia-space-7);
+}
+.gaia-workspace .field-alert {
+  margin: var(--gaia-space-7) 0;
+  color: var(--gaia-color-error);
+  font-size: var(--gaia-font-sm);
+  overflow-wrap: anywhere;
+}
+.gaia-workspace .field-status-note {
+  margin: var(--gaia-space-7) 0;
+  color: var(--accent);
+  font-size: var(--gaia-font-sm);
+  overflow-wrap: anywhere;
+}
+.gaia-workspace .assignment-card {
+  display: grid;
+  gap: var(--gaia-space-7);
+  margin-top: var(--gaia-space-9);
+  padding: var(--gaia-space-9);
+  border: var(--gaia-border-width) solid var(--line);
+  border-radius: var(--gaia-radius-sm);
+  background: var(--wash);
+}
+.gaia-workspace .assignment-card h4 {
+  margin: 0;
+  font-size: var(--gaia-font-sm);
+  color: var(--muted);
+}
+.gaia-workspace .assignment-card .management-facts {
+  margin: 0;
 }

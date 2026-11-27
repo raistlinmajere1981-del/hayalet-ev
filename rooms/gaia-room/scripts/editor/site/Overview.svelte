@@ -1,15 +1,29 @@
 <script lang="ts">
   import type en from "../../../i18n/en.json";
   import { capabilityOf, type CapabilityId } from "../../devices/capabilities.ts";
+  import type { PhysicalView } from "../../devices/field-view.ts";
   import { deviceIdsFor, deviceName, mountPath, type DeviceEdit } from "../../devices/inventory.ts";
   import { connection, deviceHealth, type DeviceStatuses } from "../../devices/status.ts";
+  import type {
+    FieldOperation,
+    FieldResults,
+    FieldState,
+  } from "../../field/management-contract.ts";
   import { objectMeasurements } from "../../spatial/measurements.ts";
   import { toParent, worldPose, type Id, type World } from "../../spatial/world.ts";
   import type { VirtualUpdate } from "../../devices/status.ts";
   import DeviceForm from "./DeviceForm.svelte";
+  import FieldPairing from "./FieldPairing.svelte";
   import Observations from "./Observations.svelte";
   import VirtualInput from "./VirtualInput.svelte";
   import { badgeSymbols, healthLabel } from "./device-view.ts";
+  import {
+    latestEstimatedMeasurement,
+    physicalConnection,
+    physicalHealth,
+    type FieldEndpointDraft,
+    type StagedReassign,
+  } from "./field.ts";
 
   let {
     world,
@@ -17,12 +31,22 @@
     labels,
     locale,
     statuses,
+    physical,
+    physicalError,
     now,
     disabled,
     statusBusy,
     statusError,
     visibleIds,
     creating,
+    fieldState,
+    endpointDraft,
+    fieldReview,
+    fieldIssued,
+    stagedReassign,
+    fieldBusy,
+    fieldError,
+    fieldNotice,
     oncancel,
     onapply,
     onselect,
@@ -30,18 +54,38 @@
     onplace,
     ondelete,
     onpublish,
+    onopenpairing,
+    onopenfieldcenter,
+    oninspect,
+    onissue,
+    ondiscardreview,
+    onenroll,
+    oncomplete,
+    onrevoke,
+    onstage,
+    onclearstage,
   }: {
     world: World;
     selected?: Id;
     labels: typeof en.site;
     locale: string;
     statuses: DeviceStatuses;
+    physical: Record<string, PhysicalView>;
+    physicalError?: "authorization_unavailable";
     now: number;
     disabled: boolean;
     statusBusy: boolean;
     statusError: boolean;
     visibleIds: ReadonlySet<Id>;
     creating: boolean;
+    fieldState?: FieldState;
+    endpointDraft: FieldEndpointDraft;
+    fieldReview?: FieldResults["inspect"];
+    fieldIssued?: { deviceId: Id; issue: FieldResults["issue"] };
+    stagedReassign?: StagedReassign;
+    fieldBusy: boolean;
+    fieldError: string;
+    fieldNotice: string;
     oncancel: () => void;
     onapply: (edit: DeviceEdit) => Promise<boolean>;
     onselect: (id?: Id) => void;
@@ -49,6 +93,16 @@
     onplace: (id: Id) => void;
     ondelete: (edit: Extract<DeviceEdit, { op: "deleteDevice" }>) => void;
     onpublish: (update: VirtualUpdate) => Promise<void>;
+    onopenpairing: () => void;
+    onopenfieldcenter: () => void;
+    oninspect: (input: Extract<FieldOperation, { action: "inspect" }>) => Promise<void>;
+    onissue: (reviewId: string) => Promise<void>;
+    ondiscardreview: () => void;
+    onenroll: (deviceId: string) => Promise<void>;
+    oncomplete: (deviceId: string, assignmentId: string) => Promise<void>;
+    onrevoke: (deviceId: string, assignmentId: string) => Promise<void>;
+    onstage: (value: StagedReassign) => void;
+    onclearstage: () => void;
   } = $props();
 
   const device = $derived(selected ? world.devices[selected] : undefined);
@@ -60,18 +114,32 @@
   );
   const node = $derived(selected ? world.nodes[selected] : undefined);
   const status = $derived(selected ? statuses[selected] : undefined);
+  const physicalView = $derived(selected ? physical[selected] : undefined);
   const scope = $derived(deviceIdsFor(world, selected));
+  const hasPhysicalInScope = $derived(
+    scope.some((id) => world.devices[id]?.source === "physical")
+  );
   const projectTotal = $derived(Object.keys(world.devices).length);
   const placed = $derived(scope.filter((id) => world.devices[id]?.mount));
   const unplaced = $derived(Object.values(world.devices).filter(({ mount }) => !mount).length);
+  const linkFor = (id: Id) => {
+    const item = world.devices[id]!;
+    return item.source === "physical"
+      ? physicalConnection(item, physical[id])
+      : connection(item, statuses[id]);
+  };
+  const healthFor = (id: Id) => {
+    const item = world.devices[id]!;
+    return item.source === "physical"
+      ? physicalHealth(item, physical[id])
+      : deviceHealth(item, statuses[id], now);
+  };
   const links = $derived.by(() => {
     const counts = { online: 0, offline: 0, unknown: 0, unbound: 0 };
-    for (const id of scope) counts[connection(world.devices[id]!, statuses[id])]++;
+    for (const id of scope) counts[linkFor(id)]++;
     return counts;
   });
-  const attention = $derived(
-    scope.filter((id) => deviceHealth(world.devices[id]!, statuses[id], now) !== "online")
-  );
+  const attention = $derived(scope.filter((id) => healthFor(id) !== "online"));
   const locations = $derived(
     device
       ? Object.entries(world.nodes)
@@ -96,6 +164,16 @@
   let editing = $state(false);
   let mounting = $state(false);
   let mountChoice = $state("");
+  let pairingOpen = $state(false);
+
+  $effect(() => {
+    if (
+      (fieldReview && fieldReview.approval.deviceId === selected) ||
+      (fieldIssued && fieldIssued.deviceId === selected)
+    ) {
+      pairingOpen = true;
+    }
+  });
 
   async function applyMount(event: SubmitEvent, id: Id) {
     event.preventDefault();
@@ -109,7 +187,7 @@
 </script>
 
 {#snippet time(at?: number)}
-  {#if at}
+  {#if at !== undefined}
     <time datetime={new Date(at).toISOString()}>{timeFormat.format(at)}</time>
   {:else}—{/if}
 {/snippet}
@@ -132,8 +210,8 @@
     {#each ids as id (id)}
       {@const item = world.devices[id]!}
       {@const current = statuses[id]}
-      {@const link = connection(item, current)}
-      {@const health = deviceHealth(item, current, now)}
+      {@const link = linkFor(id)}
+      {@const health = healthFor(id)}
       <li>
         <button class="device-link" type="button" {disabled} onclick={() => onselect(id)}>
           {deviceName(world, id)}
@@ -141,7 +219,15 @@
         {@render badge(link)}
         {#if health !== link}<small>{healthLabel(labels, health)}</small>{/if}
         {#if showObservations}
-          <Observations capabilities={item.capabilities} status={current} {now} {labels} {locale} />
+          <Observations
+            source={item.source}
+            capabilities={item.capabilities}
+            status={current}
+            physical={physical[id]}
+            {now}
+            {labels}
+            {locale}
+          />
         {/if}
       </li>
     {/each}
@@ -149,17 +235,23 @@
 {/snippet}
 
 {#if statusError}<p role="alert">{labels.statusUnavailable}</p>{/if}
+{#if physicalError === "authorization_unavailable" && (device?.source === "physical" || (!device && hasPhysicalInScope))}
+  <p class="field-alert" role="alert">{labels.fieldAuthUnavailable}</p>
+{/if}
 {#if creating}
   <DeviceForm {labels} {disabled} {onapply} {oncancel} />
 {:else if device && selected}
   {@const id = selected}
-  {@const link = connection(device, status)}
-  {@const last = Math.max(
-    0,
-    ...Object.values(status?.observations ?? {}).flatMap(({ at }) =>
-      at === undefined ? [] : [at]
-    )
-  )}
+  {@const link = linkFor(id)}
+  {@const contactAt =
+    device.source === "physical" ? physicalView?.lastContactAt : status?.lastContactAt}
+  {@const last =
+    device.source === "physical"
+      ? latestEstimatedMeasurement(physicalView)
+      : Object.values(status?.observations ?? {}).reduce<number | undefined>(
+          (latest, { at }) => (at !== undefined && (latest === undefined || at > latest) ? at : latest),
+          undefined
+        )}
   <div class="object-heading" data-selected-id={id}>
     <p class="muted">
       {labels.device} · {device.source === "virtual" ? labels.virtual : labels.physical}
@@ -182,7 +274,7 @@
       <dt>{labels.position}</dt>
       <dd>{device.mount ? mountPath(world, device.mount).join(" / ") : labels.unplaced}</dd>
       <dt>{labels.lastContact}</dt>
-      <dd>{@render time(status?.lastContactAt)}</dd>
+      <dd>{@render time(contactAt)}</dd>
       <dt>{labels.lastMeasurement}</dt>
       <dd>{@render time(last)}</dd>
     </dl>
@@ -246,8 +338,10 @@
       <section class="management-section" aria-label={labels.observations}>
         <h3>{labels.observations}</h3>
         <Observations
+          source={device.source}
           capabilities={device.capabilities}
           {status}
+          physical={physicalView}
           {now}
           {labels}
           {locale}
@@ -264,12 +358,50 @@
         disabled={disabled || statusBusy}
         {onpublish}
       />
+    {:else}
+      <details
+        class="management-section"
+        bind:open={pairingOpen}
+        ontoggle={(event) => {
+          if (event.currentTarget.open) onopenpairing();
+        }}
+      >
+        <summary>{labels.pairing}</summary>
+        <FieldPairing
+          project={world.id}
+          revision={world.revision}
+          deviceId={id}
+          {device}
+          {labels}
+          {fieldState}
+          {endpointDraft}
+          review={fieldReview?.approval.deviceId === id ? fieldReview : undefined}
+          issued={fieldIssued?.deviceId === id ? fieldIssued.issue : undefined}
+          {stagedReassign}
+          busy={disabled || fieldBusy}
+          error={fieldError}
+          notice={fieldNotice}
+          {onopenfieldcenter}
+          {oninspect}
+          {onissue}
+          {ondiscardreview}
+          {onenroll}
+          {oncomplete}
+          {onrevoke}
+          {onstage}
+          {onclearstage}
+        />
+      </details>
     {/if}
     <details class="management-section">
       <summary>{labels.device}</summary>
       <dl class="management-facts">
         <dt>{labels.deviceId}</dt>
         <dd class="device-id">{id}</dd>
+        {#if device.hardwareId}
+          <dt>{labels.hardwareId}</dt>
+          <dd class="device-id">{device.hardwareId}</dd>
+        {/if}
         <dt>{labels.deviceRoles}</dt>
         <dd>{(device.roles ?? [device.role]).map((role) => labels[role]).join(", ")}</dd>
         <dt>{labels.capabilities}</dt>

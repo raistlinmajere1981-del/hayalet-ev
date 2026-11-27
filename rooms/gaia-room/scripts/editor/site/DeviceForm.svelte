@@ -51,10 +51,13 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     if (disabled || !name.trim() || !selectedRoles.length) return;
+    const filteredCapabilities = selectedCapabilities.filter((capability) =>
+      device ? available(capability) || device.capabilities.includes(capability) : available(capability)
+    );
     const details: DeviceDetails = {
       name: name.trim(),
       roles: [...selectedRoles],
-      capabilities: [...selectedCapabilities],
+      capabilities: filteredCapabilities,
       ...(manufacturer.trim() ? { manufacturer: manufacturer.trim() } : {}),
       ...(model.trim() ? { model: model.trim() } : {}),
     };
