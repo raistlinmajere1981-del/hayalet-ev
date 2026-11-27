@@ -163,6 +163,8 @@ Güvenilen main alıcısı oda oturumu açmadan aynı proje yazıcısına girer.
 
 03-B7’de Electron main, güvenilen Gaia storage kökünde sertifika zorunlu tek merkez sahibini alır. Odanın açılması saha alımının önkoşulu değildir. B4, etkin atamanın proje kilidi altında B2 fiziksel snapshot yazıcısına girer. Gecikmiş kopuş da aynı kilidi alır ve yeni oturumun ilk paketi henüz diske ulaşmamış olsa bile RAM sahipliğini gözetir. Alıcı kontrolü ve PKI yalnız main’de bulunur. [Alıcı kontratı](GAIA-CLIENT-PROTOCOL.md#03-b7--electron-main-saha-alıcısı)
 
+03-B8/1’de `GaiaField` açık proje oturumunu main'in yerel onay diyaloğuna bağlar. `GaiaStatus` okumasında B3 ataması ile B2 disk kaydı eşleşir. B7 bellek kanıtı aynı yayını doğrularsa main kalan süreleri döndürür. Renderer bu süreleri kendi monotonik sayacında yaşlandırır. B8/1-R aynı sınırda ilk merkez kurulumu ile sunucu sertifikası oluşturma/yenileme işlemlerini ekler; imza ortamı ve parola native arayüzde kalır, yarım yetki geçmişi sıfırlanmaz. [Yönetim ve görünüm kontratı](GAIA-CLIENT-PROTOCOL.md#03-b81--yerel-yönetim-ve-görünüm-kontratı)
+
 ## 3. Kabul fixture'ı · sera ve kümes
 
 Aşağıdaki YAML, `World` kaydının kısa yazımıdır. Sentetik arazideki iki bağımsız yapı, bodrum teknik hacmi ve iki yetiştirme katı olan sera ile yalnız dış hacmi çizilen kümestir. Bölge, duvar, masa ve cihaz noktasının ayrı kimlikleri vardır. Bu girdi yalnız test kurulumu içindir. Yeni kullanıcı projesi kendi arazisiyle başlar.

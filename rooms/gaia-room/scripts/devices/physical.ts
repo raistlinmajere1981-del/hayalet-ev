@@ -25,6 +25,7 @@ const catalog = new Set<string>(capabilityIds);
 // B4 owns the session state machine. This is the explicit trusted boundary it must supply:
 // authorization/binding generation plus the central monotonic anchors needed for age.
 export interface PhysicalSessionContext {
+  assignmentId?: string;
   deviceId: Id;
   hardwareId: Id;
   installationId: string;
@@ -294,6 +295,7 @@ export function physicalSnapshot(
       link: { state: "online", at: context.acceptedAt },
       lastContactAt: context.acceptedAt,
       measured: {
+        ...(context.assignmentId === undefined ? {} : { assignmentId: context.assignmentId }),
         installationId: context.installationId,
         authorizationGeneration: context.authorizationGeneration,
         runId: context.runId,

@@ -102,6 +102,8 @@ ipcRenderer.on(ROOM_HOST_MESSAGE_CHANNEL, (_event, payload) => {
     const pending = storageRequests.get(requestId);
     if (!pending || pending.command !== command) return;
     storageRequests.delete(requestId);
+    // Native approval can take longer than the host acknowledgement deadline.
+    if (payload.payload.interactive === true) globalThis.clearTimeout(pending.timer);
     // The request stays in the initiating guest so main can authenticate its actual sender.
     ipcRenderer
       .invoke("room-storage-command", command, pending.request)

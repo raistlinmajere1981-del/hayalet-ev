@@ -5,7 +5,7 @@ import {
   X509Certificate,
   type KeyObject,
 } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { lstat, mkdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import {
   derBase64,
@@ -26,17 +26,23 @@ import {
 } from "../field/installation.ts";
 import { verifyActiveAssignment, type AuthorizationStore } from "../field/enrollment.ts";
 import { issuedCertificate, readIssuances, writeIssuances } from "./issuance-store.ts";
-import { privatePath, readAuthorizationStore, trustedFieldRoot } from "./enrollment-store.ts";
+import {
+  initializeAuthorizationStore,
+  privatePath,
+  readAuthorizationStore,
+  trustedFieldRoot,
+} from "./enrollment-store.ts";
 import { acquireDirectoryLock, hasCode, publish, serialized } from "./files.ts";
 import { caMarker, privateBytes, readFieldTrust } from "./field-trust.ts";
 import { projectDirectory, readDocument } from "./project-document.ts";
 
-interface SigningMedia {
+export interface SigningMedia {
   directory: string;
   passphrase: Buffer;
 }
 
-async function signingDirectory(root: string, media: SigningMedia) {
+// The caller can prove media and passphrase are usable before the first center write.
+export async function checkSigningMedia(root: string, media: SigningMedia) {
   if (!process.getuid)
     throw new Error("Gaia private key provisioning requires verified POSIX permissions");
   await trustedFieldRoot(media.directory);
@@ -52,6 +58,10 @@ async function signingDirectory(root: string, media: SigningMedia) {
     media.passphrase.length > 1024
   )
     throw new Error("Invalid Gaia signing passphrase");
+}
+
+async function signingDirectory(root: string, media: SigningMedia) {
+  await checkSigningMedia(root, media);
   return join(media.directory, "gaia-signing");
 }
 
@@ -86,47 +96,87 @@ async function unlock(
   return signingKey(key);
 }
 
+// Caller holds the center owner lock. The legacy B3 entry and B8 first
+// provisioning share the same CA creation implementation.
+async function createFieldCa(root: string, media: SigningMedia, dir: string) {
+  const store = await readAuthorizationStore(root);
+  if (store.assignments.length || store.preparedBegins.length || store.revocations.length)
+    throw new Error("Gaia CA bootstrap requires a new authorization history");
+  await mkdir(caMarker(root), { mode: 0o700 });
+  const online = join(root, "field", "pki");
+  await mkdir(online, { mode: 0o700 });
+  await mkdir(dir, { mode: 0o700 });
+  const keys = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const cert = await signFieldCertificate(
+    { role: "ca" },
+    "Gaia Field " + randomUUID(),
+    keys.publicKey,
+    await signingKey(keys.privateKey)
+  );
+  const der = derBase64(cert);
+  const fingerprint = sha256(der);
+  verifyFieldCa(cert, fingerprint);
+  await publish(
+    join(dir, "ca.key"),
+    keys.privateKey.export({
+      format: "pem",
+      type: "pkcs8",
+      cipher: "aes-256-cbc",
+      passphrase: media.passphrase,
+    })
+  );
+  await publish(join(online, "ca.der"), der);
+  await writeIssuances(online, { version: 1, certificates: {}, discarded: [] });
+  await publish(join(caMarker(root), "sha256"), fingerprint);
+  return fingerprint;
+}
+
 export async function provisionFieldCa(root: string, media: SigningMedia) {
   await trustedFieldRoot(root);
   const dir = await signingDirectory(root, media);
   const release = await acquireDirectoryLock(root, true);
   try {
-    const store = await readAuthorizationStore(root);
-    if (store.assignments.length || store.preparedBegins.length || store.revocations.length)
-      throw new Error("Gaia CA bootstrap requires a new authorization history");
-    await mkdir(caMarker(root), { mode: 0o700 });
-    const online = join(root, "field", "pki");
-    await mkdir(online, { mode: 0o700 });
-    await mkdir(dir, { mode: 0o700 });
-    const keys = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-    const cert = await signFieldCertificate(
-      { role: "ca" },
-      "Gaia Field " + randomUUID(),
-      keys.publicKey,
-      await signingKey(keys.privateKey)
-    );
-    const der = derBase64(cert);
-    const fingerprint = sha256(der);
-    verifyFieldCa(cert, fingerprint);
-    await publish(
-      join(dir, "ca.key"),
-      keys.privateKey.export({
-        format: "pem",
-        type: "pkcs8",
-        cipher: "aes-256-cbc",
-        passphrase: media.passphrase,
-      })
-    );
-    await publish(join(online, "ca.der"), der);
-    await writeIssuances(online, { version: 1, certificates: {}, discarded: [] });
-    await publish(join(caMarker(root), "sha256"), fingerprint);
-    return fingerprint;
+    return await createFieldCa(root, media, dir);
   } finally {
     await release();
   }
 }
 
-export async function rotateFieldServer(root: string, media: SigningMedia, origin: string) {
+export async function provisionFieldCenter(
+  root: string,
+  media: SigningMedia,
+  origin: string,
+  check: () => void
+) {
+  httpsHost(origin);
+  const dir = await signingDirectory(root, media);
+  return initializeAuthorizationStore(
+    root,
+    async () => {
+      await checkSigningMedia(root, media);
+      const existing = await lstat(dir).catch((error: unknown) => {
+        if (hasCode(error, "ENOENT")) return undefined;
+        throw error;
+      });
+      if (existing) throw new Error("Gaia signing directory already exists");
+      check();
+    },
+    async () => {
+      check();
+      const caFingerprint = await createFieldCa(root, media, dir);
+      check();
+      const serverFingerprint = await rotateFieldServer(root, media, origin, check);
+      return { caFingerprint, serverFingerprint };
+    }
+  );
+}
+
+export async function rotateFieldServer(
+  root: string,
+  media: SigningMedia,
+  origin: string,
+  check?: () => void
+) {
   httpsHost(origin);
   const trust = await readFieldTrust(root);
   await readAuthorizationStore(root);
@@ -143,6 +193,7 @@ export async function rotateFieldServer(root: string, media: SigningMedia, origi
       await signFieldCertificate(profile, "Gaia HTTPS", keys.publicKey, signer, trust.ca)
     );
     const cert = verifyFieldPeer(der, profile, trust.caCertificate, trust.fingerprint);
+    check?.();
     await publish(
       path,
       cert.toString() + "\n" + keys.privateKey.export({ format: "pem", type: "pkcs8" })
@@ -214,7 +265,8 @@ export async function issueLocalInstallation(
   root: string,
   media: SigningMedia,
   usb: unknown,
-  input: unknown
+  input: unknown,
+  check?: () => void
 ): Promise<LocalInstallation> {
   const approval = parseApproval(structuredClone(input));
   const csr = inspectUsbRequest(usb);
@@ -262,6 +314,7 @@ export async function issueLocalInstallation(
       throw new Error("Gaia installation operation already used");
     await checkInventory(root, approval, store, journal.certificates);
     const key = await unlock(root, media, trust);
+    check?.();
     const cert = await signFieldCertificate(
       { role: "client" },
       approvalDigest(approval),
@@ -271,6 +324,7 @@ export async function issueLocalInstallation(
     );
     const pkg = makePackage(cert);
     verifyInstallation(pkg, trust.fingerprint);
+    check?.();
     journal.certificates[approval.operationId] = cert;
     await writeIssuances(dir, journal);
     return pkg;

@@ -417,6 +417,18 @@ export class SessionManager {
     }
   }
 
+  liveReading(fingerprint: string, sessionId: string) {
+    const session = this.sessions.get(sessionId);
+    if (!session?.proof || session.clientFingerprint !== fingerprint || session.state !== "online")
+      return;
+    const now = this.readMono();
+    return {
+      proof: session.proof,
+      now,
+      linkRemainingMs: Math.max(0, session.deadlineMonoMs - now),
+    };
+  }
+
   inspect(sessionId: string): SessionInspection | undefined {
     const session = this.sessions.get(sessionId);
     if (!session) return undefined;

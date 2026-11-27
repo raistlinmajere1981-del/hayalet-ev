@@ -661,6 +661,15 @@ export function verifyActiveAssignment(
 ): void {
   if (assignment.state !== "active")
     throw new FieldAuthorizationDenied("Gaia authorization is not active");
+  verifyAssignmentBinding(world, epoch, assignment, expected);
+}
+
+export function verifyAssignmentBinding(
+  world: World,
+  epoch: number,
+  assignment: AuthorizationAssignment,
+  expected: VerifyAuthorizationExpectation = {}
+): void {
   if (assignment.projectId !== world.id)
     throw new FieldAuthorizationDenied("Gaia authorization project mismatch");
   if (

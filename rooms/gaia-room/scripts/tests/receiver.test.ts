@@ -15,6 +15,10 @@ import {
   type ErrorResponse,
   type Ack,
 } from "../../../../gaia-protocol/v1/src/schema.ts";
+import { projectCommand } from "../storage/provider.ts";
+import type { Opened } from "../editor/client.ts";
+import type { GaiaStatusReply } from "../devices/field-view.ts";
+import { FieldStatusReader } from "../editor/field-client.ts";
 import { listenField, validateEndpoint } from "../field/receiver.ts";
 import { decodeFieldBody } from "../field/request.ts";
 import { FieldReceiverControl } from "../field/lifecycle.ts";
@@ -625,3 +629,197 @@ test(
     assert.equal((await f.post("observations", packet)).status, 200);
   }
 );
+
+test("B8 GaiaStatus reads the live B7 proof, ages delayed IPC and separates quality, source and connection", async (t) => {
+  const f = await fixture(t);
+  const ctx = { storageRoot: f.root, owner: {} };
+  const { session } = (await projectCommand(ctx, "GaiaOpen", { project: "demo" })) as Opened;
+  const scope = { project: "demo", session };
+  const { sessionId } = await f.open();
+  const pkt = { ...(await packetFixture()), sessionId, seq: 1 };
+  // This sample reaches its freshness boundary before the heartbeat reaches its own deadline.
+  const sample = pkt.samples.find((s) => s.id === "battery.level.v1")!;
+  if (sample.quality !== "missing") sample.sampleMonoMs = pkt.sentMonoMs - 59000;
+  assert.equal((await f.post("observations", pkt)).status, 200);
+  const read = () =>
+    projectCommand(
+      ctx,
+      "GaiaStatus",
+      scope,
+      undefined,
+      f.listener.liveReading
+    ) as Promise<GaiaStatusReply>;
+  const status = await read();
+  assert.equal(status.statuses["phone"], undefined);
+  const view = status.physical["phone"]!;
+  assert.equal(view.connection, "online");
+  assert.equal(view.linkRemainingMs, 35000);
+  assert.equal(view.observations["battery.level.v1"]!.freshRemainingMs, 1000);
+  assert.equal(view.observations["battery.level.v1"]!.value, 0);
+  assert.equal(view.observations["battery.voltage.v1"]!.quality, "invalid");
+  assert.equal(view.observations["signal.read.v1"]!.freshness, "noData");
+  assert.equal(JSON.stringify(view).includes("acceptedMonoMs"), false);
+  let local = 100;
+  const reader = new FieldStatusReader(
+    async () => {
+      local += 999.25;
+      return status;
+    },
+    () => local
+  );
+  await reader.load(scope);
+  const current = () => reader.current(scope, status.revision);
+  assert.equal(current()?.physical["phone"]!.observations["battery.level.v1"]!.freshness, "stale");
+  assert.equal(current()?.physical["phone"]!.connection, "online");
+  local = 35100;
+  assert.equal(current()?.physical["phone"]!.connection, "offline");
+  assert.equal(reader.current({ ...scope, session: randomUUID() }, status.revision), undefined);
+  assert.equal(reader.current(scope, status.revision + 1), undefined);
+  reader.cancel();
+  assert.equal(current(), undefined);
+
+  const before = await f.read();
+  await assert.rejects(
+    projectCommand(ctx, "GaiaStatus", {
+      ...scope,
+      update: { kind: "link", deviceId: "phone", state: "online", source: "measured" },
+    })
+  );
+  await assert.rejects(
+    projectCommand(ctx, "GaiaStatus", {
+      ...scope,
+      update: { kind: "link", deviceId: "phone", state: "online" },
+    })
+  );
+  assert.equal(await f.read(), before);
+  f.advance(34999);
+  assert.equal((await read()).physical["phone"]!.linkRemainingMs, 1);
+  f.advance(1);
+  assert.equal((await read()).physical["phone"]!.connection, "offline");
+  await f.listener.close();
+  const cold = await f.start();
+  try {
+    const after = (await projectCommand(
+      ctx,
+      "GaiaStatus",
+      scope,
+      undefined,
+      cold.liveReading
+    )) as GaiaStatusReply;
+    assert.equal(after.physical["phone"]!.connection, "unknown");
+    assert.equal(after.physical["phone"]!.observations["battery.level.v1"]!.freshness, "stale");
+    await cold.revoke(f.assignmentId, randomUUID());
+    const revoked = (await projectCommand(
+      ctx,
+      "GaiaStatus",
+      scope,
+      undefined,
+      cold.liveReading
+    )) as GaiaStatusReply;
+    assert.deepEqual(revoked.physical, {});
+    assert.equal(revoked.statuses["phone"], undefined);
+  } finally {
+    await cold.close();
+  }
+});
+
+test("B8 T7/T8 hides mismatched grant, inventory epoch and unbound legacy rows and preserves damaged status", async (t) => {
+  const f = await fixture(t);
+  const ctx = { storageRoot: f.root, owner: {} };
+  const { session } = (await projectCommand(ctx, "GaiaOpen", { project: "demo" })) as Opened;
+  const read = () =>
+    projectCommand(
+      ctx,
+      "GaiaStatus",
+      { project: "demo", session },
+      undefined,
+      f.listener.liveReading
+    ) as Promise<GaiaStatusReply>;
+  const { sessionId } = await f.open();
+  assert.equal(
+    (await f.post("observations", { ...(await packetFixture()), seq: 1, sessionId })).status,
+    200
+  );
+  const original = await f.read();
+  for (const patch of [
+    { assignmentId: randomUUID() },
+    { authorizationGeneration: 2 },
+    { installationId: randomUUID() },
+  ]) {
+    const copy = JSON.parse(original);
+    Object.assign(copy.devices.phone.measured, patch);
+    await writeFile(f.file, JSON.stringify(copy));
+    assert.deepEqual((await read()).physical, {});
+  }
+  const legacy = JSON.parse(original);
+  delete legacy.devices.phone.measured.assignmentId;
+  await writeFile(f.file, JSON.stringify(legacy));
+  const historic = (await read()).physical["phone"]!;
+  assert.equal(historic.connection, "unknown");
+  assert.equal(historic.linkRemainingMs, 0);
+  legacy.identity = "a".repeat(64);
+  await writeFile(f.file, JSON.stringify(legacy));
+  assert.deepEqual((await read()).physical, {});
+  const version2 = JSON.parse(original);
+  version2.schemaVersion = 2;
+  version2.devices = {
+    phone: { source: "measured", hardwareId: f.pkg.approval.hardwareId, observations: {} },
+  };
+  await writeFile(f.file, JSON.stringify(version2));
+  assert.deepEqual((await read()).physical, {});
+  await writeFile(f.file, "{");
+  await assert.rejects(read(), /unreadable/);
+  assert.equal(await f.read(), "{");
+  assert.ok(((await projectCommand(ctx, "GaiaOpen", { project: "demo" })) as Opened).session);
+});
+
+test("B8 a new generation-one lineage cannot claim a revoked B7 reading with the same installation and hardware", async (t) => {
+  const f = await fixture(t);
+  const ctx = { storageRoot: f.root, owner: {} };
+  const opened = (await projectCommand(ctx, "GaiaOpen", { project: "demo" })) as Opened;
+  const scope = { project: "demo", session: opened.session };
+  const read = () =>
+    projectCommand(
+      ctx,
+      "GaiaStatus",
+      scope,
+      undefined,
+      f.listener.liveReading
+    ) as Promise<GaiaStatusReply>;
+  const { sessionId } = await f.open();
+  assert.equal(
+    (await f.post("observations", { ...(await packetFixture()), seq: 1, sessionId })).status,
+    200
+  );
+
+  await projectCommand(ctx, "GaiaStatus", {
+    ...scope,
+    update: { deviceId: "c1", kind: "link", state: "online" },
+  });
+  const ledger = join(f.root, "field", "authorization.json");
+  const bytes = await readFile(ledger);
+  await writeFile(ledger, "{");
+  const unavailable = await read();
+  assert.equal(unavailable.physicalError, "authorization_unavailable");
+  assert.deepEqual(unavailable.physical, {});
+  assert.equal(unavailable.statuses["c1"]?.source, "simulated");
+  await writeFile(ledger, bytes);
+
+  await f.listener.revoke(f.assignmentId, randomUUID());
+  const client = await usbClient();
+  const usb = { ...client.usb, installationId: f.pkg.approval.installationId };
+  const pkg = await issueLocalInstallation(f.root, f.media, usb, {
+    ...f.pkg.approval,
+    operationId: randomUUID(),
+    expectedRevision: opened.world.revision,
+    publicKeyFingerprint: publicKeyFingerprint(client.publicKey),
+    change: { kind: "begin" },
+  });
+  const next = await f.listener.enroll(pkg);
+  await f.listener.complete(next, randomUUID());
+  assert.deepEqual((await read()).physical, {});
+  const stored = await f.disk();
+  delete stored.devices.phone.measured.assignmentId;
+  await writeFile(f.file, JSON.stringify(stored));
+  assert.deepEqual((await read()).physical, {});
+});

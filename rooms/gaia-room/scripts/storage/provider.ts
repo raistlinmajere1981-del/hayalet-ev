@@ -21,7 +21,11 @@ import {
   publishReferenceAsset,
   retireReferenceAsset,
 } from "./reference-batch.ts";
+import type { FieldManagement } from "./field-management.ts";
+import { projectStatusView, type ReadLive } from "./field-view.ts";
+
 interface Context {
+  assertCurrent?: () => void;
   storageRoot: string;
   owner: object;
 }
@@ -29,6 +33,12 @@ const sessions = new WeakMap<
   object,
   { project: string; building: string | null; revision: number; id: string }
 >();
+function assertProjectSession(owner: object, project: string, session: string) {
+  const active = sessions.get(owner);
+  if (active?.id !== session || active.project !== project)
+    throw new Error("Gaia project session mismatch");
+}
+
 const commands = [
   "GaiaProjects",
   "GaiaCreate",
@@ -36,13 +46,15 @@ const commands = [
   "GaiaSave",
   "GaiaReference",
   "GaiaStatus",
+  "GaiaField",
 ];
 
 export async function projectCommand(
-  { storageRoot, owner }: Context,
+  { storageRoot, owner, assertCurrent }: Context,
   command: string,
   request: unknown,
-  decode?: DecodeRaster
+  decode?: DecodeRaster,
+  readLive?: ReadLive
 ) {
   const projects = await directory(storageRoot, "projects", true);
   if (command === "GaiaProjects") {
@@ -70,21 +82,25 @@ export async function projectCommand(
     segment(project);
     uuid(session);
     const update = hasUpdate ? parseVirtualUpdate(request["update"]) : undefined;
+    const check = () => {
+      assertCurrent?.();
+      assertProjectSession(owner, project, session);
+    };
+    check();
     const dir = await directory(projects, project, false);
     return serialized(dir, async () => {
-      const active = sessions.get(owner);
-      if (active?.id !== session || active.project !== project)
-        throw new Error("Gaia status session mismatch");
+      check();
       const { world, statusEpoch = 0 } = await readDocument(join(dir, "world.json"), project);
-      return {
-        statuses: await projectStatuses(
-          dir,
-          world,
-          statusEpoch,
-          update && { ...update, source: "simulated" }
-        ),
-        revision: world.revision,
-      };
+      const rows = await projectStatuses(
+        dir,
+        world,
+        statusEpoch,
+        update && { ...update, source: "simulated" },
+        check
+      );
+      const result = await projectStatusView(storageRoot, world, statusEpoch, rows, readLive);
+      check();
+      return result;
     });
   }
   const save = command === "GaiaSave",
@@ -238,9 +254,7 @@ async function referenceCommand(
   segment(asset);
   const dir = await directory(await directory(storageRoot, "projects", false), project, false);
   return await serialized(dir, async () => {
-    const active = sessions.get(owner);
-    if (active?.id !== session || active.project !== project)
-      throw new Error("Gaia reference session mismatch");
+    assertProjectSession(owner, project, session);
     const { world } = await readDocument(join(dir, "world.json"), project);
     const record = Object.hasOwn(world.assets, asset) ? world.assets[asset] : undefined;
     if (!record || !Object.values(world.references).some((layer) => layer.asset === asset))
@@ -252,11 +266,31 @@ async function referenceCommand(
   });
 }
 
-export const gaiaStorage = (decode: DecodeRaster) => ({
+export const gaiaStorage = (decode: DecodeRaster, field?: FieldManagement) => ({
   roomId: "gaia-room",
   commands,
-  execute: (context: Context, command: string, request: unknown) =>
-    command === "GaiaReference"
+  execute: async (context: Context, command: string, request: unknown) => {
+    if (command === "GaiaField") {
+      fields(request, ["project", "session", "operation"]);
+      const { project, session, operation } = request;
+      segment(project);
+      uuid(session);
+      const verifyCaller = context.assertCurrent;
+      if (!field || !verifyCaller) return { ok: false, code: "unavailable" };
+      const assertCurrent = () => {
+        verifyCaller();
+        assertProjectSession(context.owner, project, session);
+      };
+      return field.execute({ ...context, assertCurrent }, project, session, operation);
+    }
+    return command === "GaiaReference"
       ? referenceCommand(context, request, decode)
-      : projectCommand(context, command, request, decode),
+      : projectCommand(
+          context,
+          command,
+          request,
+          decode,
+          field?.control.liveReading.bind(field.control)
+        );
+  },
 });

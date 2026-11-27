@@ -4,7 +4,7 @@ import { createServer as createTcpServer, isIP, type Socket } from "node:net";
 import { TLSSocket } from "node:tls";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { httpsHost, sha256 } from "./certificates.ts";
-import { openFieldAuthority } from "../storage/enrollment-service.ts";
+import { openFieldAuthority, type FieldAdministration } from "../storage/enrollment-service.ts";
 import { readFieldServerIdentity } from "../storage/field-trust.ts";
 import { fieldIngest } from "./receiver-authority.ts";
 import { readFieldBody, reply, replyError, RequestError } from "./request.ts";
@@ -295,7 +295,23 @@ export async function listenField(
     });
     return {
       checkIdentity,
+      manage: <T>(work: (admin: FieldAdministration) => Promise<T>) =>
+        owner.manage((admin) =>
+          work({
+            ...admin,
+            async change(action, ...args) {
+              const assignment = await admin.change(action, ...args);
+              if (action === "revoke") ingest.sessions.retireClient(assignment.fingerprint);
+              return assignment;
+            },
+          })
+        ),
+      liveReading(fingerprint: string, sessionId: string) {
+        checkClock();
+        return ingest.sessions.liveReading(fingerprint, sessionId);
+      },
       status: () => ({
+        serverFingerprint: identity.fingerprint,
         listening: !invalidated && !closing,
         connections: sockets.size,
         pending: pending.size,

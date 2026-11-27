@@ -267,10 +267,11 @@ function readMeasured(input: unknown): MeasuredContext {
       "deviceWallMs",
       "acceptedAt",
     ],
-    ["order"]
+    ["order", "assignmentId"]
   );
   const seq = input["seq"];
   if (
+    (input["assignmentId"] !== undefined && !uuid(input["assignmentId"])) ||
     !uuid(input["installationId"]) ||
     !uuid(input["runId"]) ||
     !uuid(input["sessionId"]) ||
@@ -285,6 +286,7 @@ function readMeasured(input: unknown): MeasuredContext {
     throw new Error("Invalid Gaia device status file");
   const order = input["order"] === undefined ? undefined : readOrder(input["order"]);
   return {
+    ...(input["assignmentId"] === undefined ? {} : { assignmentId: input["assignmentId"] }),
     installationId: input["installationId"],
     authorizationGeneration: input["authorizationGeneration"],
     runId: input["runId"],
@@ -495,6 +497,7 @@ function serializeOrder(order: Record<string, MeasuredOrder>): Record<string, un
 
 function serializeMeasured(measured: MeasuredContext): Record<string, unknown> {
   return {
+    ...(measured.assignmentId === undefined ? {} : { assignmentId: measured.assignmentId }),
     installationId: measured.installationId,
     authorizationGeneration: measured.authorizationGeneration,
     runId: measured.runId,
@@ -579,7 +582,8 @@ export async function projectStatuses(
   dir: string,
   world: World,
   epoch: number,
-  update?: StatusUpdate
+  update?: StatusUpdate,
+  check?: () => void
 ): Promise<DeviceStatuses> {
   const path = join(dir, "device-status.json");
   const stored = await readStored(path);
@@ -587,6 +591,7 @@ export async function projectStatuses(
   const active =
     stored && stored.identity === identity ? activeStatuses(world, stored.statuses) : {};
   if (!update) return active;
+  check?.();
   const next = recordStatus(world, active, update, Date.now());
   if (next !== active) await publish(path, serializeStatuses(identity, next));
   return next;
@@ -597,6 +602,19 @@ export async function projectStatuses(
 export interface PhysicalLiveProof {
   identity: string;
   status: DeviceStatus;
+}
+
+export function matchesLiveProof(
+  identity: string,
+  persisted: DeviceStatus,
+  proof: PhysicalLiveProof
+) {
+  return (
+    proof.identity === identity &&
+    proof.status.source === "measured" &&
+    proof.status.measured?.acceptedMonoMs !== undefined &&
+    isDeepStrictEqual(serializeStatus(proof.status), serializeStatus(persisted))
+  );
 }
 
 // The physical ingest boundary. B4/B7 must call this while holding the project writer lock,
@@ -616,13 +634,7 @@ export async function projectPhysicalSnapshot(
     stored && stored.identity === identity ? activeStatuses(world, stored.statuses) : {};
   if (previousLive !== undefined) {
     const persisted = active[input.context.deviceId];
-    if (
-      previousLive.identity !== identity ||
-      !persisted ||
-      previousLive.status.source !== "measured" ||
-      previousLive.status.measured?.acceptedMonoMs === undefined ||
-      !isDeepStrictEqual(serializeStatus(previousLive.status), serializeStatus(persisted))
-    )
+    if (!persisted || !matchesLiveProof(identity, persisted, previousLive))
       throw new Error("Gaia physical session continuity mismatch");
     active[input.context.deviceId] = previousLive.status;
   }

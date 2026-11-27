@@ -10,3 +10,4 @@ import "../../rooms/gaia-room/scripts/tests/certificates.test.ts";
 import "../../rooms/gaia-room/scripts/tests/restore.test.ts";
 import "../../rooms/gaia-room/scripts/tests/session.test.ts";
 import "../../rooms/gaia-room/scripts/tests/receiver.test.ts";
+import "../../rooms/gaia-room/scripts/tests/field-management.test.ts";

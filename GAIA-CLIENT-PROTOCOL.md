@@ -384,6 +384,69 @@ Toplam 16 bağlantıya ek olarak en çok 16 istek işi bekleyebilir. Soketi zama
 
 Main içindeki `gaiaField` kontrolü başlatma, durdurma, durum, yeniden yükleme ve imzalı yerel kurulum işlemlerini sağlar. Ağ sözleşmesi iki POST ile sınırlıdır. Sunucu kimliği her kabul işleminde ve etkin kontrolün beş saniyelik denetiminde yeniden okunur. Yüklenen sertifika veya CA değişimi, geçerlilik sınırının aşılması ya da duvar saati ile monotonik saat farkının başlangıca göre bir saniyeden fazla kayması mevcut soketleri ve oturumları kapatır. Denetim geçerli kimlikle yeni bir dinleyici açar. Suspend alımı durdurur, resume yeniden doğrular. Uygulama çıkışı dinleyicinin kapanmasını, işlem ve oturumların bitmesini ve B3 sahipliğinin bırakılmasını bekler. [Yaşam döngüsü](rooms/gaia-room/scripts/field/lifecycle.ts)
 
+### 03-B8/1 · Yerel yönetim ve görünüm kontratı
+
+`GaiaOpen` veya `GaiaCreate` sonucundan `{project: world.id, session}` alınır. Bütün yönetim çağrıları aynı açık proje ve Electron belgesine bağlıdır. Main çağıran webview'ı, ana frame'i, host pencereyi, partition'ı, kurulu giriş URL'sini ve manifesti doğrular. Belge değişimi veya başka proje açılması bekleyen onayın yetkisini düşürür. UI kapanınca B7 alımı sürer. [Tipli istekler ve sonuçlar](rooms/gaia-room/scripts/field/management-contract.ts) · [UI çağrıları](rooms/gaia-room/scripts/editor/field-client.ts)
+
+| `fieldCommand(scope, operation)` işlemi | UI davranışı                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`                                 | Yerel merkezin enabled/listening durumu, yapılandırılmış endpoint, CA durumu ve açık izleri ile projenin güncel pending/active atamalarını oku. Sunucu izi çalışan dinleyiciye aittir. Dinleyici kapalıyken isteğe bağlı `origin` alanı diskteki sunucu kimliğinin o hedef için doğrulanmış izini getirir. `assignmentError` atamaların okunamadığını bildirir. CA `absent` ise B3 ilk merkez kurulumu gerekir. `unavailable` ise güven kaydı doğrulanamamıştır. |
+| `provision`                             | Yalnız kanonik `origin` gönder. Alıcı tamamen durmuş olmalıdır. İlk merkez için `.field-provisioned` ve `field` yokluğu, imza ortamının merkez dışında/özel olması ve parolanın 16–1024 bayt olması ilk yazımdan önce doğrulanır. Main yerel ortam seçicisini ve `/usr/bin/kdialog` parolasını kullanarak yetki deposunu, CA'yı ve sunucu sertifikasını oluşturur. Var olan veya yarım kalmış depo sıfırlanmaz. Yalnız CA ve sunucu izleri döner.                |
+| `rotateServer`                          | Yalnız kanonik `origin` gönder. Alıcı tamamen durmuş olmalıdır; çalışan dinleyici, bekleyen geçiş veya yapılandırılmış endpoint reddedilir. Mevcut CA ve yetki deposu doğrulanır, imza ortamı ve parola native arayüzden alınır, `field/pki/server.pem` atomik yenilenir. Yalnız yeni sunucu izi döner.                                                                                                                                                          |
+| `start`, `stop`                         | Start için açık arayüz IP'si, port ve kanonik HTTPS origin ver. Native onay bütün projelerin dinleyicisini etkiler. Başlatma hatasından sonra state oku. B7 etkin yapılandırmanın başlatılmasını yeniden deneyebilir.                                                                                                                                                                                                                                            |
+| `inspect`                               | Seçili fiziksel cihazı, kayıtlı dünya revizyonunu, donanım kimliğini, izin listesini, origin'i ve değişim türünü gönder. Main yerel seçiciden USB CSR alır ve imzasını doğrular. Yanıttaki installationId ve açık anahtar izini telefonda karşılaştır. Son inceleme bu belgede beş dakika geçerlidir.                                                                                                                                                            |
+| `issue`                                 | Yalnız `reviewId` gönder. Main imzalama ortamını ve çıkış klasörünü seçtirir. Native onay proje, cihaz, donanım, kurulum, izinler, origin, parmak izleri ve varsa önceki bağı gösterir. İmza parolası Linux'ta `/usr/bin/kdialog` ile main'e alınır. Sonuç USB dosyasının adı ve açık Client sertifika izidir.                                                                                                                                                   |
+| `enroll`                                | Hedef `deviceId` ile çağır. Main seçilen imzalı paketi, CA izini, B3 üretim kaydını ve güncel hedefi doğrular. Başlangıç ve yenilemede `pending` döner. İmzalı `rebindHardware` ve `reassign` B3 taşıma akışıyla etkin halefi döndürür. Aynı paketi yeniden seçmek B3 işlem kimliğini korur.                                                                                                                                                                     |
+| `complete`, `revoke`                    | Açık projedeki `deviceId` ve `assignmentId` gerekir. Cihaz kurulumu doğrulandıktan sonra complete ile pending atamayı etkinleştir. Revoke pending atamayı iptal eder veya etkin yetkiyi kapatır. Native onayda görülen atama, yazıcı kilidi altında yeniden eşleşmelidir.                                                                                                                                                                                        |
+
+`change` ilk kurulum için `{kind: "begin"}`, anahtar yenileme ve donanım değişimi için `{kind, assignmentId}` alır. Projeler arası taşıma hedef proje oturumunda yapılır. Kaynak projeden alınan `assignmentId` ve `expectedSourceRevision`, `kind: "reassign"` ile gönderilir. Çıkış klasörü ile CSR ve paket dosyalarını işletim sistemi seçicisi belirler. Mevcut dosyayla ad çakışması hata verir. İmzalama ve yetki değişiklikleri dinleyici kapalıyken de B3 tek merkez kilidini tutar.
+
+`provision` yalnız `origin` taşır; imza ortamı, parola ve dosya yolu renderer'dan alınmaz. Alıcı tamamen durmuş olmalıdır. Main ilk yazımdan önce kökün özel/kanonik olduğunu, `.field-provisioned` ile `field` bulunmadığını, imza ortamının merkez dışında kaldığını ve parolanın sınırlarını doğrular. Var olan veya yarım kalmış yetki geçmişi otomatik onarılmaz veya sıfırlanmaz; ikinci merkez `unavailable` döner ve hiçbir dosya değiştirilmez. `rotateServer` yalnız tamamen durmuş alıcıda, mevcut CA ve yetki deposu doğrulandıktan sonra sunucu sertifikasını oluşturur/yeniler. Eski proje oturumu veya başka proje bağı `scope_changed`, native iptal `cancelled`, geçersiz ortam/parola, meşgul sahiplik veya yarım kurulum `unavailable` döner. Başarılı `provision` ve `rotateServer` yalnız parmak izlerini döndürür; parola ve yollar main'den çıkmaz.
+
+```ts
+import { fieldCommand, FieldStatusReader } from "./field-client.ts";
+
+const scope = { project: opened.world.id, session: opened.session };
+const state = await fieldCommand(scope, { action: "state", origin });
+if (state.ok && state.data.ca === "absent")
+  await fieldCommand(scope, { action: "provision", origin });
+// After the receiver is fully stopped, fieldCommand(scope, { action: "rotateServer", origin })
+// creates or renews the server certificate.
+const review = await fieldCommand(scope, {
+  action: "inspect",
+  deviceId,
+  hardwareId,
+  capabilities,
+  revision: opened.world.revision,
+  origin,
+  change: { kind: "begin" },
+});
+if (review.ok) {
+  const signed = await fieldCommand(scope, { action: "issue", reviewId: review.data.reviewId });
+  if (signed.ok) {
+    const grant = await fieldCommand(scope, { action: "enroll", deviceId });
+    // Retain the pending ID for completion after installation on the physical client.
+    if (grant.ok) pendingId = grant.data.id;
+  }
+}
+```
+
+**B8/1-R bağımsız sertleştirme.** İlk kurulum mevcut `gaia-signing` dizini (boş, dolu veya sembolik bağ) bulunan imza ortamını merkezde ilk yazımdan önce reddeder. Yetki deposu, CA ve sunucu sertifikasının ilk kurulumu tek merkez sahipliği kilidi altında yapılır. Önkoşul kilit altında tekrar okunur; hata sonrası kısmi geçmiş sıfırlanmaz. Kurulum veya yönetim işi sürerken Start yeni etkin yapılandırma oluşturamaz. Sunucu yenilemesinde güncel oda/oturum onayı son sertifika yayını öncesi tekrar kontrol edilir. `state.ca=absent` yalnız hiç saha geçmişi olmayan kökü ifade eder; kısmi yetki deposu ve eksik CA `unavailable` olarak gösterilir.
+
+`FieldReply` her işlemin tipli sonucunu veya `code` döndürür. `cancelled` yerel iptal, `busy` başka bir açık yönetim diyaloğu, `invalid_request` tanınmayan komut veya alan, `scope_changed` eski inceleme/oturum/cihaz bağı, `unavailable` ise güvenlik, medya, kilit, imza veya dinleyici hatasıdır. Yanlış IPC çağırıcısı ve taşımada kaybolan cevap Promise reddi olarak gelebilir. Hata sonrasında görünümü temizle, state ve projeyi tekrar oku. Onay veya dosya yolu göndererek işlemi tekrarlayan bir API yoktur.
+
+`GaiaStatus` aynı oturumda `{revision, statuses, physical}` döndürür. `statuses` mevcut simulated satırlarını taşır. `physical[deviceId]` güncel atamaya ait measured görünümüdür. Satır yoksa cihaz için güvenilir örnek yoktur. Yetki deposu okunamazsa `physicalError: "authorization_unavailable"` ile fiziksel görünüm boş döner. Yan dosya okunamazsa tüm okuma reddedilir. Main disk ve bellek kanıtını güncel dünya, epoch, atama, donanım, kurulum, nesil ve izinlerle karşılaştırır. Eski B7 satırının atama UUID'si yoksa geçmişteki bağın da tekil olması gerekir. Restart sonrası eşleşen kalıcı ölçüm stale, bağlantı unknown veya kayıtlı offline olur.
+
+```ts
+const reader = new FieldStatusReader();
+await reader.load(scope);
+const view = reader.current(scope, opened.world.revision);
+const phone = view?.physical[deviceId];
+const sample = phone?.observations["battery.level.v1"];
+```
+
+Görünürken ilk okumayı hemen yap, ardından en geç 10 saniyede bir yenile. Yeniden çizimde `reader.current` çağır. Bu çağrı istek başlangıcından itibaren geçen **renderer monotonik süresini** main'in `linkRemainingMs` ve `freshRemainingMs` bütçelerinden düşer. Kalite (`valid/invalid/missing`), tazelik (`fresh/stale/noData`) ve bağlantı (`online/offline/unknown`) ayrı alanlardır. `at` ve `receivedAt` yalnız gösterim içindir. Gizlenme, proje değişimi veya yetki değişikliğinde `reader.cancel()` ile belleği temizle ve dönüşte tekrar yükle. Envanter revizyonunu değiştiren bir eşleme sonrası projeyi yeniden aç. [Görünüm tipleri](rooms/gaia-room/scripts/devices/field-view.ts)
+
 ### Pozitif ve negatif kabul senaryoları
 
 | ID  | Deney                                                                                                                                                                                                | Beklenen sonuç                                                                                                                                                                                                 |

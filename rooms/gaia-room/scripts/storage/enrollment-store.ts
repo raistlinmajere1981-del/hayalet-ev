@@ -41,33 +41,57 @@ export async function trustedFieldRoot(root: string) {
   await privatePath(root, true);
 }
 
-// Only first-time local provisioning may create history. A lost ledger must never look virgin.
-export async function provisionAuthorizationStore(root: string) {
-  await trustedFieldRoot(root);
-  const marker = join(root, ".field-provisioned");
-  const field = join(root, "field");
+async function fieldPathsPresent(root: string) {
   const existing = await Promise.all(
-    [marker, field].map((path) =>
+    [join(root, ".field-provisioned"), join(root, "field")].map((path) =>
       lstat(path).catch((error: unknown) => {
         if (hasCode(error, "ENOENT")) return undefined;
         throw error;
       })
     )
   );
-  if (existing.some(Boolean))
+  return existing.some(Boolean);
+}
+
+// A partial first write must stay visible as existing history, never be mistaken for a virgin center.
+export async function fieldStoragePresent(root: string) {
+  await trustedFieldRoot(root);
+  return fieldPathsPresent(root);
+}
+
+// Hold one center owner through the complete first provisioning transaction.
+// A failure after the first write leaves history present, never a resettable virgin center.
+export async function initializeAuthorizationStore<T>(
+  root: string,
+  before: () => Promise<void>,
+  after: () => Promise<T>
+): Promise<T> {
+  await trustedFieldRoot(root);
+  if (await fieldPathsPresent(root))
     throw Object.assign(new Error("Gaia field storage already exists"), { code: "EEXIST" });
-  // General restore must finish its last world/status write before a center can create authority.
   const release = await acquireDirectoryLock(root, true);
   try {
-    await mkdir(marker, { mode: 0o700 });
-    await mkdir(field, { mode: 0o700 });
+    if (await fieldPathsPresent(root))
+      throw Object.assign(new Error("Gaia field storage already exists"), { code: "EEXIST" });
+    await before();
+    await mkdir(join(root, ".field-provisioned"), { mode: 0o700 });
+    await mkdir(join(root, "field"), { mode: 0o700 });
     await publish(
       authorizationStorePath(root),
       serializeAuthorizationStore(emptyAuthorizationStore())
     );
+    return await after();
   } finally {
     await release();
   }
+}
+
+export async function provisionAuthorizationStore(root: string) {
+  return initializeAuthorizationStore(
+    root,
+    async () => {},
+    async () => {}
+  );
 }
 
 export async function readAuthorizationStore(storageRoot: string): Promise<AuthorizationStore> {
@@ -155,7 +179,8 @@ export async function reconcileAuthorizationStore(
 export async function revokeStoredAssignment(
   storageRoot: string,
   assignmentId: string,
-  operationId: string
+  operationId: string,
+  check?: (target: AuthorizationAssignment) => void | Promise<void>
 ): Promise<AuthorizationAssignment> {
   const projects = await directory(storageRoot, "projects", false);
   const attempt = async (): Promise<AuthorizationAssignment> => {
@@ -170,6 +195,7 @@ export async function revokeStoredAssignment(
         >(storageRoot, async (current) => {
           const entry = revocationTarget(current, assignmentId, operationId);
           if (entry.projectId !== projectId) return { store: current, result: { moved: true } };
+          await check?.(entry);
           const result = revokeAuthorization(current, {
             assignmentId,
             operationId,

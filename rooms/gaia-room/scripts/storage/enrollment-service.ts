@@ -99,7 +99,11 @@ async function withVerifiedAssignment<T>(
     return await work(document.world, statusEpoch, assignment);
   });
 }
-async function beginEnrollment(storageRoot: string, request: Record<string, unknown>) {
+async function beginEnrollment(
+  storageRoot: string,
+  request: Record<string, unknown>,
+  check?: () => void
+) {
   const operationId = request["operationId"];
   uuid(operationId);
   const project = request["project"];
@@ -120,6 +124,7 @@ async function beginEnrollment(storageRoot: string, request: Record<string, unkn
   const dir = await projectDirectory(storageRoot, project);
   return await serialized(dir, async () => {
     const doc = await readDocument(join(dir, "world.json"), project);
+    check?.();
     let world = doc.world;
     let epoch = doc.statusEpoch ?? 0;
     // A caller may acknowledge the resulting revision only while this exact world receipt survives.
@@ -142,6 +147,7 @@ async function beginEnrollment(storageRoot: string, request: Record<string, unkn
       now: Date.now(),
     };
     const existing = await readAuthorizationStore(storageRoot);
+    check?.();
     const replay = existing.assignments.find(
       (assignment) => assignment.beginOperationId === operationId
     );
@@ -177,9 +183,11 @@ async function beginEnrollment(storageRoot: string, request: Record<string, unkn
       validateWorld(candidate);
       await updateAuthorizationStore(storageRoot, async (store) => {
         // Reject a known conflict before changing inventory. Activation always reads the store again.
+        check?.();
         beginAuthorization(store, candidate, candidate.revision, input);
         return { store: prepareBegin(store, input), result: undefined };
       });
+      check?.();
       const published = await publishManagedWorld(
         storageRoot,
         dir,
@@ -193,6 +201,7 @@ async function beginEnrollment(storageRoot: string, request: Record<string, unkn
     }
 
     const assignment = await updateAuthorizationStore(storageRoot, async (store) => {
+      check?.();
       const result = beginAuthorization(store, world, epoch, input);
       return { store: result.store, result: result.assignment };
     });
@@ -203,7 +212,8 @@ async function beginEnrollment(storageRoot: string, request: Record<string, unkn
 async function completeEnrollment(
   storageRoot: string,
   request: Record<string, unknown>,
-  certificatesRequired: boolean
+  certificatesRequired: boolean,
+  check?: (target: AuthorizationAssignment) => void | Promise<void>
 ) {
   const operationId = request["operationId"];
   uuid(operationId);
@@ -237,6 +247,9 @@ async function completeEnrollment(
         throw new Error("Missing Gaia installation certificate");
     }
     const completed = await updateAuthorizationStore(storageRoot, async (store) => {
+      const target = store.assignments.find((a) => a.id === assignmentId);
+      if (!target) throw new Error("Unknown Gaia authorization assignment");
+      await check?.(target);
       const result = completeAuthorization(store, doc.world, epoch, {
         assignmentId,
         operationId,
@@ -265,7 +278,11 @@ function assertRevision(doc: Document, expected: number, id: string, digest: str
   if (doc.world.revision !== expected) throw new Error("Gaia enrollment revision conflict");
 }
 
-async function transferEnrollment(storageRoot: string, request: Record<string, unknown>) {
+async function transferEnrollment(
+  storageRoot: string,
+  request: Record<string, unknown>,
+  check?: () => void
+) {
   const move = request["action"] === "reassign";
   const assignmentId = request["assignmentId"],
     operationId = request["operationId"];
@@ -300,6 +317,7 @@ async function transferEnrollment(storageRoot: string, request: Record<string, u
 
   const release = async (doc: Document, observedRevision?: number) =>
     updateAuthorizationStore(storageRoot, async (store) => {
+      check?.();
       const current = store.assignments.find((a) => a.id === assignmentId);
       if (!current || current.projectId !== doc.world.id)
         throw new Error("Gaia authorization project mismatch");
@@ -348,6 +366,7 @@ async function transferEnrollment(storageRoot: string, request: Record<string, u
       return { store: closed.store, result: closed.assignment };
     });
   const finish = async (dir: string, doc: Document) => {
+    check?.();
     const store = await readAuthorizationStore(storageRoot);
     const replay = store.assignments.find((a) => a.beginOperationId === operationId);
     if (replay) {
@@ -393,12 +412,14 @@ async function transferEnrollment(storageRoot: string, request: Record<string, u
         devices: { ...doc.world.devices, [deviceId]: { ...device, hardwareId } },
       };
       validateWorld(world);
+      check?.();
       await publishManagedWorld(storageRoot, dir, doc, world, operationId, digest);
       doc = await readDocument(join(dir, "world.json"), project);
       assertRevision(doc, targetRevision, operationId, digest);
     }
     const { world, statusEpoch = 0 } = doc;
     const assignment = await updateAuthorizationStore(storageRoot, async (locked) => {
+      check?.();
       const result = activateAuthorization(locked, world, statusEpoch, {
         projectId: project,
         operationId,
@@ -511,7 +532,7 @@ async function enrollmentCommand(
 }
 
 // Only a locally approved USB package reaches the grant transitions on a provisioned CA center.
-async function enrollLocalInstallation(storageRoot: string, input: unknown) {
+async function enrollLocalInstallation(storageRoot: string, input: unknown, check?: () => void) {
   const pkg = structuredClone(input);
   const trust = await readFieldTrust(storageRoot);
   const { approval, certificateFingerprint } = verifyInstallation(pkg, trust.fingerprint);
@@ -531,8 +552,8 @@ async function enrollLocalInstallation(storageRoot: string, input: unknown) {
     const command = approvedEnrollmentCommand(approval, certificateFingerprint);
     const result =
       command.action === "begin"
-        ? await beginEnrollment(storageRoot, command)
-        : await transferEnrollment(storageRoot, command);
+        ? await beginEnrollment(storageRoot, command, check)
+        : await transferEnrollment(storageRoot, command, check);
     if (result.assignment.state === "revoked")
       throw new Error("Gaia installation assignment was revoked");
     return result;
@@ -558,6 +579,16 @@ async function discardUnpublishedInstallation(root: string, operationId: string)
       await writeIssuances(dir, journal);
     }
   });
+}
+
+export interface FieldAdministration {
+  enroll: (pkg: unknown, check: () => void) => Promise<AuthorizationAssignment>;
+  change: (
+    action: "complete" | "revoke",
+    assignmentId: string,
+    operationId: string,
+    check: (target: AuthorizationAssignment) => void | Promise<void>
+  ) => Promise<AuthorizationAssignment>;
 }
 
 // The main lifecycle owns this handle even between requests. Shutdown drains accepted work
@@ -588,7 +619,17 @@ export async function openFieldAuthority(
       running.delete(task);
     }
   };
+  const admin: FieldAdministration = {
+    enroll: async (pkg, check) =>
+      (await enrollLocalInstallation(storageRoot, pkg, check)).assignment,
+    change: async (action, assignmentId, operationId, check) =>
+      action === "revoke"
+        ? revokeStoredAssignment(storageRoot, assignmentId, operationId, check)
+        : (await completeEnrollment(storageRoot, { assignmentId, operationId }, true, check))
+            .assignment,
+  };
   return {
+    manage: <T>(work: (admin: FieldAdministration) => Promise<T>) => run(() => work(admin)),
     discardUnpublishedInstallation: (operationId: string) =>
       run(() => discardUnpublishedInstallation(storageRoot, operationId)),
     // B7 supplies only DER from a mutually authenticated socket. Recheck dates after waiting for the writer.

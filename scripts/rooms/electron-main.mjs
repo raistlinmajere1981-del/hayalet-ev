@@ -6,9 +6,9 @@ import { app, powerMonitor } from "electron";
 import { Paths } from "../../electron/paths.ts";
 import { attachGaiaField } from "./gaia-field-main.mjs";
 
+import { FieldManagement } from "../../rooms/gaia-room/scripts/storage/field-management.ts";
+import { fieldDialogs } from "./gaia-field-dialogs.mjs";
 import "../../electron/main.ts";
-
-registerStorageProvider(gaiaStorage(decodeRaster));
 
 export const gaiaField = attachGaiaField(
   app,
@@ -16,3 +16,5 @@ export const gaiaField = attachGaiaField(
   () => Paths.getRoomStorageDir("gaia-room"),
   process.env
 );
+
+registerStorageProvider(gaiaStorage(decodeRaster, new FieldManagement(gaiaField, fieldDialogs)));

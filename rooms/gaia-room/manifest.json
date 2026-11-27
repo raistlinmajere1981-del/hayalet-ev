@@ -49,6 +49,12 @@
           "exposure": "internal"
         },
         {
+          "name": "GaiaField",
+          "description": "Manage the local Gaia field receiver and approved USB assignments",
+          "scope": "room-ui",
+          "exposure": "internal"
+        },
+        {
           "name": "GaiaStatus",
           "description": "Read latest device status or submit a virtual update",
           "scope": "room-ui",

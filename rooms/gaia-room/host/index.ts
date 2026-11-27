@@ -15,12 +15,17 @@ export default function activate(api: Host) {
     "GaiaSave",
     "GaiaReference",
     "GaiaStatus",
+    "GaiaField",
   ]) {
     api.registerCommand(
       command,
       ({ roomArgs }) => {
         if (typeof roomArgs?.requestId !== "string") return { success: false };
-        api.notifyRoom("room-storage-dispatch", { command, requestId: roomArgs.requestId });
+        api.notifyRoom("room-storage-dispatch", {
+          command,
+          requestId: roomArgs.requestId,
+          interactive: command === "GaiaField",
+        });
         return { success: true };
       },
       { scope: "room-ui", exposure: "internal" }

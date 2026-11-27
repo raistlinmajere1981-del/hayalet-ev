@@ -47,6 +47,7 @@ export interface MeasuredOrder {
 }
 
 export interface MeasuredContext {
+  assignmentId?: string;
   installationId: string;
   authorizationGeneration: number;
   runId: string;
@@ -225,17 +226,16 @@ export function connection(device: Device, status?: DeviceStatus): Connection {
 
 // Measured freshness needs a live central monotonic anchor. Without one (restart, sidecar
 // read, or a B4 session that has not supplied a clock) the record is last-known/stale.
-export function measuredFreshness(
+export function measuredFreshRemainingMs(
   status: DeviceStatus | undefined,
   reading: Observation | undefined,
   monoMs?: number
-): Freshness {
-  if (!reading || reading.quality === "missing") return "noData";
-  if (status?.link?.state === "offline") return "stale";
+): number {
+  if (!reading || reading.quality === "missing") return 0;
+  if (status?.link?.state === "offline") return 0;
   // A reconnect cannot make a reading that was first accepted before the last offline
   // transition fresh again; only evidence accepted after it can.
-  if (status?.lastOfflineAt !== undefined && reading.receivedAt <= status.lastOfflineAt)
-    return "stale";
+  if (status?.lastOfflineAt !== undefined && reading.receivedAt <= status.lastOfflineAt) return 0;
   if (
     reading.source !== "measured" ||
     reading.ageUpperMs === undefined ||
@@ -245,12 +245,21 @@ export function measuredFreshness(
     !Number.isSafeInteger(reading.acceptedMonoMs) ||
     !Number.isSafeInteger(monoMs)
   )
-    return "stale";
+    return 0;
   const elapsed = monoMs - reading.acceptedMonoMs;
-  if (elapsed < 0) return "stale";
+  if (elapsed < 0) return 0;
   const age = reading.ageUpperMs + elapsed;
-  if (!Number.isSafeInteger(age)) return "stale";
-  return age < freshForMs ? "fresh" : "stale";
+  if (!Number.isSafeInteger(age)) return 0;
+  return Math.max(0, freshForMs - age);
+}
+
+export function measuredFreshness(
+  status: DeviceStatus | undefined,
+  reading: Observation | undefined,
+  monoMs?: number
+): Freshness {
+  if (!reading || reading.quality === "missing") return "noData";
+  return measuredFreshRemainingMs(status, reading, monoMs) > 0 ? "fresh" : "stale";
 }
 
 export function observationFreshness(

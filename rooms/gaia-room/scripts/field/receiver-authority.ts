@@ -120,7 +120,13 @@ export function fieldIngest(
               async publish(input, previousLive) {
                 checkLive();
                 const dir = join(root, "projects", world.id);
-                const rows = await projectPhysicalSnapshot(dir, world, epoch, input, previousLive);
+                const rows = await projectPhysicalSnapshot(
+                  dir,
+                  world,
+                  epoch,
+                  { ...input, context: { ...input.context, assignmentId: assignment.id } },
+                  previousLive
+                );
                 return {
                   identity: deviceStatusIdentity(world, epoch),
                   status: rows[input.context.deviceId]!,

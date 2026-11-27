@@ -2,6 +2,7 @@ import { lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { session, type IpcMainInvokeEvent, type BrowserWindow } from "electron";
+import { roomStorageCaller, type RoomStorageCaller } from "./storage-caller.ts";
 import { Paths } from "../paths.ts";
 import { flattenRoomCommandSpecs, validateRoomManifest } from "@shared/index.js";
 
@@ -9,7 +10,7 @@ interface StorageProvider {
   roomId: string;
   commands: readonly string[];
   execute: (
-    context: { storageRoot: string; owner: object },
+    context: RoomStorageCaller & { storageRoot: string },
     command: string,
     request: unknown
   ) => Promise<unknown>;
@@ -30,17 +31,12 @@ export async function executeRoomStorage(
   request: unknown
 ): Promise<{ success: true; data: unknown }> {
   const provider = providers.get(command);
-  const guest = event.sender;
-  const frame = event.senderFrame;
-  if (
-    !provider ||
-    !frame ||
-    guest.getType() !== "webview" ||
-    frame !== guest.mainFrame ||
-    guest.hostWebContents !== getWindow()?.webContents ||
-    guest.session !== session.fromPartition("persist:room-" + provider.roomId)
-  )
-    throw new Error("Unauthorized room storage caller");
+  if (!provider) throw new Error("Unauthorized room storage caller");
+  const caller = roomStorageCaller(
+    event,
+    getWindow,
+    session.fromPartition("persist:room-" + provider.roomId)
+  );
   const runtime = Paths.getRoomRuntimeBuildDir(provider.roomId);
   const { manifest } = validateRoomManifest(
     JSON.parse(await readFile(join(runtime, "manifest.json"), "utf8"))
@@ -49,7 +45,7 @@ export async function executeRoomStorage(
   const entry = join(runtime, manifest.runtime.uiEntry);
   if (
     (await realpath(entry)) !== entry ||
-    frame.url !== pathToFileURL(entry).href ||
+    caller.url !== pathToFileURL(entry).href ||
     !flattenRoomCommandSpecs(manifest).some(
       (spec) => spec.name === command && spec.scope === "room-ui"
     )
@@ -65,8 +61,8 @@ export async function executeRoomStorage(
   };
   await ensure(dirname(storageRoot));
   await ensure(storageRoot);
-  return {
-    success: true,
-    data: await provider.execute({ storageRoot, owner: guest }, command, request),
-  };
+  caller.assertCurrent();
+  const data = await provider.execute({ storageRoot, ...caller }, command, request);
+  caller.assertCurrent();
+  return { success: true, data };
 }
