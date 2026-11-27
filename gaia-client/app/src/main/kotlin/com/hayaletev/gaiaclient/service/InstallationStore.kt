@@ -1,5 +1,6 @@
 package com.hayaletev.gaiaclient.service
 
+import com.hayaletev.gaiaclient.protocol.bounded
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -19,10 +20,9 @@ class InstallationIdentityException(message: String, cause: Throwable? = null) :
  * break the central mapping, so recovery is an explicit reinstall.
  */
 class InstallationStore(private val dir: File) {
-    @Synchronized
-    fun getOrCreate(): String {
+    fun getOrCreate(): String = synchronized(identityLock) {
         try {
-            return readOrCreate()
+            readOrCreate()
         } catch (failure: InstallationIdentityException) {
             throw failure
         } catch (failure: Exception) {
@@ -37,7 +37,7 @@ class InstallationStore(private val dir: File) {
         val file = File(dir, FILE_NAME)
         if (file.exists()) {
             val existing = try {
-                file.readText().trim()
+                file.inputStream().use { it.bounded(128) }.toString(Charsets.UTF_8).trim()
             } catch (failure: Exception) {
                 throw InstallationIdentityException("installation identity is unreadable", failure)
             }
@@ -47,6 +47,9 @@ class InstallationStore(private val dir: File) {
             return existing
         }
 
+        if (File(dir, "field-installation").exists()) {
+            throw InstallationIdentityException("paired installation identity is missing")
+        }
         if (!dir.isDirectory && !dir.mkdirs()) {
             throw InstallationIdentityException(
                 "installation identity directory could not be created"
@@ -91,6 +94,7 @@ class InstallationStore(private val dir: File) {
     }
 
     private companion object {
+        val identityLock = Any()
         const val FILE_NAME = "installation-id"
         val UUID_V4 = Regex(
             "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"

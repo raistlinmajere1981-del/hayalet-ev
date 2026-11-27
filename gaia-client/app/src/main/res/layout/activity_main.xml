@@ -25,12 +25,23 @@
             android:textSize="14sp" />
 
         <TextView
-            android:id="@+id/tv_local_test"
+            android:id="@+id/tv_pairing"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/local_test_mode"
-            android:textStyle="bold" />
+            android:textIsSelectable="true" />
+
+        <Button
+            android:id="@+id/btn_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/export_request" />
+
+        <Button
+            android:id="@+id/btn_import"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/import_package" />
 
         <Button
             android:id="@+id/btn_start_stop"

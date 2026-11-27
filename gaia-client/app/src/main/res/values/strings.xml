@@ -5,13 +5,12 @@
     <string name="status_idle">Service stopped. Press Start to begin.</string>
 
     <string name="notification_channel_name">Gaia Client collection</string>
-    <string name="notification_channel_description">Foreground hardware collection for the local test session</string>
+    <string name="notification_channel_description">Foreground hardware collection</string>
     <string name="notification_title">Gaia Client</string>
-    <string name="notification_starting">Starting local collection…</string>
-    <string name="notification_running">Local test collection running</string>
+    <string name="notification_starting">Starting Gaia Client…</string>
+    <string name="notification_running">Field collection running</string>
     <string name="notification_stop">Stop</string>
 
-    <string name="local_test_mode">Local test mode — no central connection</string>
     <string name="device_info">Device: %1$s %2$s\nAndroid %3$s (API %4$d)\nABI: %5$s</string>
     <string name="label_state">Service</string>
     <string name="state_running">Running</string>
@@ -27,11 +26,10 @@
     <string name="no_session">—</string>
     <string name="label_tick">Tick</string>
     <string name="label_outcome">Outcome</string>
-    <string name="outcome_accepted">Local test accepted</string>
+    <string name="outcome_accepted">Center acknowledged</string>
     <string name="outcome_retryable">Retry pending</string>
-    <string name="outcome_rejected">Rejected</string>
     <string name="outcome_session_lost">Session lost</string>
-    <string name="outcome_open_failed">Open failed</string>
+    <string name="outcome_open_failed">Connecting to center failed</string>
     <string name="outcome_none">—</string>
 
     <string name="label_found">Found capabilities</string>
@@ -74,4 +72,15 @@
     <string name="yes">yes</string>
     <string name="no">no</string>
     <string name="network_value">%1$s · %2$s: %3$s · %4$s: %5$s</string>
+    <string name="export_request">Export USB request</string>
+    <string name="import_package">Import installation</string>
+    <string name="unpaired">Unpaired</string>
+    <string name="compare_spki">Pending USB request. Compare the UUID and SPKI on the trusted center.</string>
+    <string name="enter_pin">Enter the CA SHA-256 fingerprint from the trusted center</string>
+    <string name="install">Verify and install</string>
+    <string name="error_installation">Installation or local key unavailable</string>
+    <string name="error_certificate">Check the system clock and certificate validity</string>
+    <string name="error_authorization">Authorization revoked or denied. Review the local assignment.</string>
+    <string name="error_protocol">Protocol error. Check the field configuration.</string>
+    <string name="error_pairing_busy">Installation or previous collection is still busy. Try again when it finishes.</string>
 </resources>

@@ -31,7 +31,7 @@ object JsonWriter {
 
     private fun quote(value: String): String = buildString(value.length + 2) {
         append('"')
-        for (character in value) {
+        for ((index, character) in value.withIndex()) {
             when (character) {
                 '"' -> append("\\\"")
                 '\\' -> append("\\\\")
@@ -41,7 +41,9 @@ object JsonWriter {
                 '\r' -> append("\\r")
                 '\t' -> append("\\t")
                 else -> {
-                    if (character < ' ') {
+                    val unpaired = (character.isHighSurrogate() && value.getOrNull(index + 1)?.isLowSurrogate() != true) ||
+                        (character.isLowSurrogate() && value.getOrNull(index - 1)?.isHighSurrogate() != true)
+                    if (character < ' ' || unpaired) {
                         append("\\u")
                         append(character.code.toString(16).padStart(4, '0'))
                     } else {

@@ -37,8 +37,8 @@ class CollectionEngineFailureTest {
         }
     }
 
-    private fun harness(vararg backoffDelays: Long): Harness {
-        val transport = ScriptedTransport()
+    private fun harness(vararg backoffDelays: Long, onTransportEvent: (String) -> Unit = {}): Harness {
+        val transport = ScriptedTransport(onTransportEvent)
         val store = RecordingSampleStore()
         val events = RecordingEngineEvents()
         val sleeper = ManualSleeper()
@@ -89,9 +89,9 @@ class CollectionEngineFailureTest {
         val h = harness(500, 1_000)
         try {
             val first = h.openFirstSession()
-            h.transport.respondSend(SendResult.Retryable("busy"))
+            h.transport.respondSend(SendResult.Retryable("busy", 750))
 
-            assertEquals(500L, withTimeout(5_000) { h.sleeper.nextDelay() })
+            assertEquals(750L, withTimeout(5_000) { h.sleeper.nextDelay() })
             val retryState = withTimeout(5_000) {
                 h.events.awaitState {
                     it.phase == EnginePhase.RETRY_WAIT && it.lastOutcome == SendOutcome.RETRYABLE
@@ -162,8 +162,16 @@ class CollectionEngineFailureTest {
     }
 
     @Test
-    fun rejectedClosesAndReopensImmediately() = runBlocking {
-        assertImmediateReopen(SendResult.Rejected("rejected"))
+    fun terminalRejectionClosesAndStopsReopening() = runBlocking {
+        val h = harness()
+        try {
+            h.openFirstSession()
+            h.transport.respondSend(SendResult.Terminal(com.hayaletev.gaiaclient.transport.FieldError.AUTHORIZATION))
+            withTimeout(5000) { h.events.awaitState { it.phase == EnginePhase.STOPPED } }
+            assertNull(withTimeoutOrNull(150) { h.transport.nextOpenContext() })
+            assertTrue(h.store.sentPacketsCopy().isEmpty())
+            assertEquals(1, h.transport.closeCount.get())
+        } finally { h.close() }
     }
 
     private suspend fun assertImmediateReopen(result: SendResult) {
@@ -203,12 +211,12 @@ class CollectionEngineFailureTest {
     }
 
     @Test
-    fun acceptedWithWrongSessionIsSessionLoss() = runBlocking {
+    fun wrongSessionRetriesOriginalPacket() = runBlocking {
         assertWrongAck(SendResult.Accepted("session-other", 1))
     }
 
     @Test
-    fun acceptedWithWrongSeqIsSessionLoss() = runBlocking {
+    fun wrongSequenceRetriesOriginalPacket() = runBlocking {
         assertWrongAck(SendResult.Accepted("session-1", 2))
     }
 
@@ -218,24 +226,11 @@ class CollectionEngineFailureTest {
             val first = h.openFirstSession("session-1")
             h.transport.respondSend(result)
 
-            withTimeout(5_000) { h.transport.nextOpenContext() }
-            assertEquals(1, h.transport.closeCount.get())
-            assertEquals(1, h.store.endCount())
-            assertEquals(1, h.events.closedCount())
+            assertEquals(500L, withTimeout(5_000) { h.sleeper.nextDelay() })
+            assertNull(h.transport.tryNextOpenContext())
             assertTrue(h.store.sentPacketsCopy().isEmpty())
-
-            h.transport.respondOpen(
-                OpenResult.Opened(
-                    "session-2",
-                    listOf(CapabilityId.BATTERY_LEVEL, CapabilityId.SIGNAL),
-                    10_000
-                )
-            )
-            assertEquals("session-2", withTimeout(5_000) { h.events.awaitOpened() }.sessionId)
-            val second = withTimeout(5_000) { h.transport.nextSend() }
-            assertEquals("session-2", second.sessionId)
-            assertEquals(1L, second.seq)
-            assertTrue(second.sessionId != first.sessionId)
+            h.sleeper.releaseNext()
+            assertEquals(first, withTimeout(5_000) { h.transport.nextSend() })
         } finally {
             h.close()
         }
@@ -329,6 +324,28 @@ class CollectionEngineFailureTest {
         } finally {
             h.close()
         }
+    }
+
+    @Test
+    fun replayAckCannotScheduleTheNextTickPastTheOriginalDeadline() = runBlocking {
+        val h = harness()
+        try {
+            val first = h.openFirstSession()
+            h.transport.respondSend(SendResult.Accepted(first.sessionId, first.seq, deadlineMs = 5300))
+            assertEquals(300L, withTimeout(5000) { h.sleeper.nextDelay() })
+        } finally { h.close() }
+    }
+
+    @Test
+    fun cleanupContinuesWhenTransportCloseFails() = runBlocking {
+        val h = harness { if (it == "close") throw java.io.IOException("test close") }
+        try {
+            h.openFirstSession()
+            h.engine.stop()?.join()
+            assertEquals(1, h.store.endCount())
+            assertEquals(1, h.events.closedCount())
+            assertNull(h.engine.state().lastPacket)
+        } finally { h.close() }
     }
 
     @Test

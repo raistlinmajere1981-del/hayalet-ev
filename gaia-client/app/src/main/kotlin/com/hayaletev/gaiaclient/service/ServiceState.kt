@@ -7,13 +7,13 @@ import com.hayaletev.gaiaclient.transport.TransportMode
 
 enum class StopReason { USER, SYSTEM_TIMEOUT, DESTROYED }
 
-enum class ClientError { IDENTITY_UNAVAILABLE, START_FAILED }
+enum class ClientError { IDENTITY_UNAVAILABLE, START_FAILED, PAIRING_BUSY, INSTALLATION, CERTIFICATE, AUTHORIZATION, PROTOCOL }
 
 data class ClientState(
     val running: Boolean = false,
     val stopReason: StopReason? = null,
     val error: ClientError? = null,
-    val transportMode: TransportMode = TransportMode.LOCAL_TEST,
+    val transportMode: TransportMode = TransportMode.FIELD,
     val found: List<CapabilityId> = emptyList(),
     val accepted: List<CapabilityId> = emptyList(),
     val sessionShortId: String? = null,

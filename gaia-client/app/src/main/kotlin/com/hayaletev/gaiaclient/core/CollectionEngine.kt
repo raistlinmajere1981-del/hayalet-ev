@@ -1,5 +1,6 @@
 package com.hayaletev.gaiaclient.core
 
+import com.hayaletev.gaiaclient.transport.FieldError
 import com.hayaletev.gaiaclient.transport.OpenResult
 import com.hayaletev.gaiaclient.transport.SendResult
 import com.hayaletev.gaiaclient.transport.SessionOpenContext
@@ -13,7 +14,7 @@ import kotlinx.coroutines.launch
 
 enum class EnginePhase { STOPPED, OPENING, SENDING, WAITING, RETRY_WAIT }
 
-enum class SendOutcome { ACCEPTED, RETRYABLE, REJECTED, SESSION_LOST, OPEN_FAILED }
+enum class SendOutcome { ACCEPTED, RETRYABLE, SESSION_LOST, OPEN_FAILED }
 
 data class EngineState(
     val phase: EnginePhase = EnginePhase.STOPPED,
@@ -29,6 +30,7 @@ interface EngineEvents {
     fun onSessionClosed()
     fun onBeforeSnapshot()
     fun onResubscribe(ids: Set<CapabilityId>)
+    fun onTerminal(error: FieldError) {}
     fun onState(state: EngineState)
 }
 
@@ -87,9 +89,9 @@ class CollectionEngine(
         }
 
         current?.cancel()
-        transport.close()
-        store.endSession()
-        if (wasActive) events.onSessionClosed()
+        runCatching { transport.close() }
+        runCatching { store.endSession() }
+        if (wasActive) runCatching { events.onSessionClosed() }
         events.onState(stoppedState)
         return current
     }
@@ -119,8 +121,11 @@ class CollectionEngine(
                 is OpenResult.Opened -> {
                     val accepted = openResult.accepted.toList()
                     val floorMonoMs = clock.elapsedRealtimeMs()
-                    store.beginSession(accepted.toSet(), floorMonoMs)
-                    synchronized(lock) { sessionActive = true }
+                    synchronized(lock) {
+                        if (stopped) return
+                        store.beginSession(accepted.toSet(), floorMonoMs)
+                        sessionActive = true
+                    }
                     events.onSessionOpened(openResult.sessionId, accepted, floorMonoMs)
                     publish(
                         EngineState(
@@ -133,15 +138,20 @@ class CollectionEngine(
                     runSession(openResult, accepted)
                 }
 
+                is OpenResult.Terminal -> {
+                    terminal(openResult.error)
+                    return
+                }
+
                 is OpenResult.Failed -> {
-                    transport.close()
+                    transport.endSession()
                     publish(
                         EngineState(
                             phase = EnginePhase.RETRY_WAIT,
                             lastOutcome = SendOutcome.OPEN_FAILED
                         )
                     )
-                    sleeper.sleep(backoff.nextDelayMs())
+                    sleeper.sleep(maxOf(openResult.retryAfterMs, backoff.nextDelayMs()))
                 }
             }
         }
@@ -151,8 +161,13 @@ class CollectionEngine(
         var seq = 1L
         var tickCount = 0L
         var pending: ObservationPacket? = null
+        var deadline = opened.deadlineMs
 
         while (currentCoroutineContext().isActive && !stopped) {
+            if (deadline != null && clock.elapsedRealtimeMs() >= deadline) {
+                endSession(SendOutcome.SESSION_LOST)
+                return
+            }
             val packet = pending ?: buildPacket(opened.sessionId, seq, accepted)
             pending = packet
             publish(
@@ -166,7 +181,7 @@ class CollectionEngine(
                 )
             )
 
-            val result = try {
+            val reply = try {
                 transport.send(packet)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -179,12 +194,13 @@ class CollectionEngine(
             val resubscribe = store.consumeResubscribeRequests()
             if (resubscribe.isNotEmpty()) events.onResubscribe(resubscribe)
 
+            val result = if (reply is SendResult.Accepted &&
+                (reply.sessionId != opened.sessionId || reply.seq != packet.seq)) {
+                SendResult.Retryable("mismatched-ack")
+            } else reply
             when (result) {
                 is SendResult.Accepted -> {
-                    if (result.sessionId != opened.sessionId || result.seq != packet.seq) {
-                        endSession(SendOutcome.SESSION_LOST)
-                        return
-                    }
+                    deadline = result.deadlineMs
                     store.recordSent(packet)
                     val afterAck = store.consumeResubscribeRequests()
                     if (afterAck.isNotEmpty()) events.onResubscribe(afterAck)
@@ -201,8 +217,14 @@ class CollectionEngine(
                             lastPacket = packet
                         )
                     )
+                    if (packet.seq == MAX_SAFE_INTEGER) {
+                        endSession(SendOutcome.SESSION_LOST)
+                        return
+                    }
                     seq = packet.seq + 1
-                    sleeper.sleep(opened.intervalMs.coerceAtLeast(1))
+                    val interval = opened.intervalMs.coerceAtLeast(1)
+                    val remaining = deadline?.let { (it - clock.elapsedRealtimeMs()).coerceAtLeast(0) }
+                    sleeper.sleep(if (remaining == null) interval else minOf(interval, remaining))
                 }
 
                 is SendResult.Retryable -> {
@@ -216,22 +238,34 @@ class CollectionEngine(
                             lastPacket = packet
                         )
                     )
-                    sleeper.sleep(backoff.nextDelayMs())
+                    val wait = maxOf(result.retryAfterMs, backoff.nextDelayMs())
+                    val remaining = deadline?.let { (it - clock.elapsedRealtimeMs()).coerceAtLeast(0) }
+                    if (remaining != null && remaining <= wait) {
+                        sleeper.sleep(remaining)
+                        endSession(SendOutcome.SESSION_LOST)
+                        if (wait > remaining) sleeper.sleep(wait - remaining)
+                        return
+                    }
+                    sleeper.sleep(wait)
                 }
 
-                is SendResult.Rejected -> {
-                    // B5 fake rejection is retryable by design. B6 maps a
-                    // terminal 403 to its own result instead of this path.
-                    endSession(SendOutcome.REJECTED)
+                is SendResult.Terminal -> {
+                    terminal(result.error)
                     return
                 }
 
                 is SendResult.SessionLost -> {
                     endSession(SendOutcome.SESSION_LOST)
+                    if (result.retryAfterMs > 0) sleeper.sleep(maxOf(result.retryAfterMs, backoff.nextDelayMs()))
                     return
                 }
             }
         }
+    }
+
+    private fun terminal(error: FieldError) {
+        stop()
+        events.onTerminal(error)
     }
 
     private fun buildPacket(
@@ -244,7 +278,7 @@ class CollectionEngine(
     }
 
     private fun endSession(outcome: SendOutcome) {
-        transport.close()
+        transport.endSession()
         store.endSession()
         synchronized(lock) { sessionActive = false }
         events.onSessionClosed()

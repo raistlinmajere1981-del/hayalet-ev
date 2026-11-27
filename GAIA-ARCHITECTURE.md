@@ -159,6 +159,8 @@ Bağımsız Client doğrudan Hayalet Ev'e HTTPS/mTLS ile bağlanır. Saha CA'sı
 
 Güvenilen main alıcısı oda oturumu açmadan aynı proje yazıcısına girer. Güncel izin, dünya ve epoch kilit altında yeniden doğrulanır. Measured paket tek yayında bağlantı ve son örnekleri günceller. Dünya revizyonu ve epoch yalnız envanter/dünya kayıt kurallarına tabidir. Renderer tarafında `GaiaStatus` güncellemesinin kaynağı daima `simulated` kalır. Tasarlanan v3 yan dosya, v2 kimlik denetimini, bozuk dosyanın korunmasını ve dünya önce yayın sırasını sürdürür. Sürekli örnek, on-change olayı, bağlantı tazeliği ve ölçüm geçerliliği ayrı gösterilir. [Kimlik, tel şeması ve depolama kuralları](GAIA-CLIENT-PROTOCOL.md)
 
+03-B6 Android tarafında kurulum anahtarı Android Keystore’da, doğrulanmış sertifika ve atama uygulamanın yedekleme dışı deposunda tutulur. `TransportProvider` saha adaptörünü B5 toplama motoruna bağlar. Deney alıcısı yalnız test kaynaklarında çalışır. Üretim alıcısı ve Electron main yaşam döngüsü B7’ye aittir. [Android taşıma sözleşmesi](GAIA-CLIENT-PROTOCOL.md#03-b6--android-kurulum-ve-gönderim)
+
 ## 3. Kabul fixture'ı · sera ve kümes
 
 Aşağıdaki YAML, `World` kaydının kısa yazımıdır. Sentetik arazideki iki bağımsız yapı, bodrum teknik hacmi ve iki yetiştirme katı olan sera ile yalnız dış hacmi çizilen kümestir. Bölge, duvar, masa ve cihaz noktasının ayrı kimlikleri vardır. Bu girdi yalnız test kurulumu içindir. Yeni kullanıcı projesi kendi arazisiyle başlar.

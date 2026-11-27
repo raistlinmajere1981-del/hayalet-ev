@@ -30,6 +30,7 @@ import com.hayaletev.gaiaclient.service.StopReason
 import java.util.Locale
 
 class MainActivity : Activity() {
+    private lateinit var setup: PairingControls
     private lateinit var deviceInfoView: TextView
     private lateinit var startStopButton: Button
     private lateinit var statusView: TextView
@@ -104,6 +105,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        setup = PairingControls(this)
         deviceInfoView = findViewById(R.id.tv_device_info)
         startStopButton = findViewById(R.id.btn_start_stop)
         statusView = findViewById(R.id.tv_status)
@@ -124,7 +126,7 @@ class MainActivity : Activity() {
         )
 
         startStopButton.setOnClickListener {
-            if (GaiaClientService.isRunning) stopCollection() else startCollection()
+            if (GaiaClientService.isRunning) stopCollection() else if (!setup.busy) startCollection()
         }
         render(lastState)
     }
@@ -171,8 +173,15 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        setup.close()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
+    }
+
+    @Deprecated("Activity result callback for the platform document picker")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == RESULT_OK) data?.data?.let { setup.selected(requestCode, it) }
     }
 
     private fun startCollection() {
@@ -230,10 +239,16 @@ class MainActivity : Activity() {
             if (state.running || GaiaClientService.isRunning) R.string.stop else R.string.start
         )
 
+        setup.running(state.running || GaiaClientService.isRunning)
         statusView.text = when {
             state.running || GaiaClientService.isRunning -> getString(R.string.state_running)
             state.error == ClientError.IDENTITY_UNAVAILABLE ->
                 getString(R.string.error_identity_unavailable)
+            state.error == ClientError.CERTIFICATE -> getString(R.string.error_certificate)
+            state.error == ClientError.INSTALLATION -> getString(R.string.error_installation)
+            state.error == ClientError.PAIRING_BUSY -> getString(R.string.error_pairing_busy)
+            state.error == ClientError.AUTHORIZATION -> getString(R.string.error_authorization)
+            state.error == ClientError.PROTOCOL -> getString(R.string.error_protocol)
             localStartFailed || state.error == ClientError.START_FAILED -> getString(R.string.error_start_failed)
             state.stopReason != null -> getString(
                 R.string.stop_reason_format,
@@ -366,7 +381,6 @@ class MainActivity : Activity() {
         when (outcome) {
             SendOutcome.ACCEPTED -> R.string.outcome_accepted
             SendOutcome.RETRYABLE -> R.string.outcome_retryable
-            SendOutcome.REJECTED -> R.string.outcome_rejected
             SendOutcome.SESSION_LOST -> R.string.outcome_session_lost
             SendOutcome.OPEN_FAILED -> R.string.outcome_open_failed
             null -> R.string.outcome_none

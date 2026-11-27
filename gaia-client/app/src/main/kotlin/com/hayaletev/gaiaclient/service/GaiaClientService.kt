@@ -5,6 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -21,6 +23,8 @@ import com.hayaletev.gaiaclient.core.FullJitterBackoff
 import com.hayaletev.gaiaclient.core.SnapshotFactory
 import com.hayaletev.gaiaclient.hardware.HardwareSnapshotSource
 import com.hayaletev.gaiaclient.hardware.SystemMonoClock
+import com.hayaletev.gaiaclient.pairing.FieldUseGate
+import com.hayaletev.gaiaclient.transport.FieldError
 import com.hayaletev.gaiaclient.transport.TransportMode
 import com.hayaletev.gaiaclient.transport.TransportProvider
 import java.io.File
@@ -40,11 +44,13 @@ class GaiaClientService : Service() {
 
     private var engine: CollectionEngine? = null
     private var source: HardwareSnapshotSource? = null
+    private var clockReceiver: BroadcastReceiver? = null
+    private var fieldLease: FieldUseGate.Lease? = null
 
     @Volatile
     private var state = ClientState()
 
-    private var transportMode = TransportMode.LOCAL_TEST
+    private var transportMode = TransportMode.FIELD
 
     override fun onCreate() {
         super.onCreate()
@@ -102,18 +108,7 @@ class GaiaClientService : Service() {
             return
         }
 
-        runGuard.stop()
-        isRunning = false
-
-        val currentEngine = engine
-        engine = null
-        currentEngine?.stop()
-
-        val currentSource = source
-        source = null
-        currentSource?.dispose()
-
-        removeNotification()
+        releaseRun()
         publish(
             state.copy(
                 running = false,
@@ -138,6 +133,12 @@ class GaiaClientService : Service() {
             buildNotification(getString(R.string.notification_starting))
         )
 
+        fieldLease = FieldUseGate.process.acquire()
+        if (fieldLease == null) {
+            failStart(ClientError.PAIRING_BUSY)
+            return
+        }
+
         val identity = try {
             InstallationStore(File(noBackupFilesDir, INSTALLATION_DIR)).getOrCreate()
         } catch (failure: InstallationIdentityException) {
@@ -149,8 +150,16 @@ class GaiaClientService : Service() {
         isRunning = true
 
         try {
+            val transport = try {
+                TransportProvider.create(applicationContext)
+            } catch (e: java.security.cert.CertificateException) {
+                failStart(ClientError.CERTIFICATE)
+                return
+            } catch (e: Exception) {
+                failStart(ClientError.INSTALLATION)
+                return
+            }
             val newSource = HardwareSnapshotSource(applicationContext, SystemMonoClock)
-            val transport = TransportProvider.create(applicationContext)
             transportMode = transport.mode
             val runId = UUID.randomUUID().toString()
             val newEngine = CollectionEngine(
@@ -170,6 +179,13 @@ class GaiaClientService : Service() {
             source = newSource
             engine = newEngine
 
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (intent?.action == Intent.ACTION_TIME_CHANGED) transport.onClockChanged()
+                }
+            }
+            registerReceiver(receiver, IntentFilter(Intent.ACTION_TIME_CHANGED))
+            clockReceiver = receiver
             newSource.start()
             publish(
                 ClientState(
@@ -190,20 +206,31 @@ class GaiaClientService : Service() {
 
     @Synchronized
     private fun failStart(error: ClientError) {
+        releaseRun()
+        publish(ClientState(running = false, error = error))
+        stopSelf()
+    }
+
+    private fun releaseRun() {
         runGuard.stop()
         isRunning = false
 
         val currentEngine = engine
         engine = null
-        currentEngine?.stop()
+        val draining = runCatching { currentEngine?.stop() }.getOrNull()
 
         val currentSource = source
         source = null
-        currentSource?.dispose()
+        runCatching { currentSource?.dispose() }
 
+        val receiver = clockReceiver
+        clockReceiver = null
+        if (receiver != null) runCatching { unregisterReceiver(receiver) }
+        val lease = fieldLease
+        fieldLease = null
+        if (draining == null) lease?.close()
+        else draining.invokeOnCompletion { lease?.close() }
         removeNotification()
-        publish(ClientState(running = false, error = error))
-        stopSelf()
     }
 
     private fun eventsFor(generation: Long, runSource: HardwareSnapshotSource): EngineEvents =
@@ -230,6 +257,16 @@ class GaiaClientService : Service() {
             override fun onResubscribe(ids: Set<CapabilityId>) {
                 if (!runGuard.isCurrent(generation)) return
                 runSource.resubscribe(ids)
+            }
+
+            override fun onTerminal(error: FieldError) {
+                handler.post {
+                    if (runGuard.isCurrent(generation)) failStart(when (error) {
+                        FieldError.AUTHORIZATION -> ClientError.AUTHORIZATION
+                        FieldError.CERTIFICATE -> ClientError.CERTIFICATE
+                        FieldError.PROTOCOL -> ClientError.PROTOCOL
+                    })
+                }
             }
 
             override fun onState(state: EngineState) {
@@ -279,8 +316,8 @@ class GaiaClientService : Service() {
 
     private fun removeNotification() {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.cancel(NOTIFICATION_ID)
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        runCatching { manager.cancel(NOTIFICATION_ID) }
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
     }
 
     private fun createChannel() {

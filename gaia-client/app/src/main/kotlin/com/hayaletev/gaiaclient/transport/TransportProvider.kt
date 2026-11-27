@@ -1,14 +1,10 @@
 package com.hayaletev.gaiaclient.transport
 
 import android.content.Context
+import com.hayaletev.gaiaclient.hardware.SystemMonoClock
+import com.hayaletev.gaiaclient.pairing.pairingStore
 
-/**
- * B6 replaces this composition point with the mTLS adapter. B5 never opens a
- * socket or claims a central delivery.
- */
 object TransportProvider {
-    fun create(context: Context): TransportAdapter {
-        context.applicationContext
-        return FakeTransportAdapter()
-    }
+    fun create(context: Context): TransportAdapter =
+        FieldTransport(pairingStore(context).active(), SystemMonoClock, androidHostLookup(context.applicationContext))
 }
