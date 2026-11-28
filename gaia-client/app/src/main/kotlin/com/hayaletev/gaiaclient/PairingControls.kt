@@ -34,8 +34,12 @@ internal class PairingControls(private val activity: Activity) {
     }
 
     private fun pick(action: String, code: Int) {
+        // USB-copied JSON may be advertised as octet-stream or another MIME
+        // type by older document providers. Import validates bounded content,
+        // the signed installation and the trusted CA, not provider metadata.
         val intent =
-            Intent(action).addCategory(Intent.CATEGORY_OPENABLE).setType("application/json")
+            Intent(action).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType(if (code == EXPORT) "application/json" else "*/*")
         if (code == EXPORT) intent.putExtra(Intent.EXTRA_TITLE, "gaia-usb-request.json")
         activity.startActivityForResult(intent, code)
     }

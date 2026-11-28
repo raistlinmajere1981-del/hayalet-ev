@@ -54,6 +54,7 @@
     "android:deps:check": "node scripts/update-android-companion-deps.mjs --check",
     "android:deps:update": "node scripts/update-android-companion-deps.mjs",
     "android:open": "node scripts/open-android-companion.mjs",
+    "gaia:sync-lock": "node scripts/rooms/sync-gaia-storage-lock.mjs",
     "gaia-protocol:schemas": "node --import tsx gaia-protocol/v1/scripts/generate-artifacts.ts",
     "gaia-protocol:test": "node scripts/run-with-env.mjs TSX_TSCONFIG_PATH=src/tsconfig.json -- node --import tsx --import ./scripts/tests/register-asset-loader.mjs --test --test-concurrency=1 scripts/tests/gaia-protocol-v1.test.ts",
     "capture:v4l2:setup": "node scripts/setup-scrcpy-v4l2loopback.mjs",

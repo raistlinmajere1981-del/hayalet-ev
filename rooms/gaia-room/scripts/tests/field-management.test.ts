@@ -4,7 +4,6 @@ import { randomUUID } from "node:crypto";
 import { chmod, mkdtemp, rm, stat, symlink, writeFile, readFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { roomStorageCaller } from "../../../../electron/rooms/storage-caller.ts";
 import { FieldReceiverControl } from "../field/lifecycle.ts";
 import { FieldManagement, type FieldDialogs } from "../storage/field-management.ts";
 import { serialized } from "../storage/files.ts";
@@ -241,40 +240,6 @@ test("B8 foreign guest, changed project, replaced session and closed room invali
     return true;
   };
   assert.deepEqual(await f.raw(revoke), denied);
-});
-
-test("B8 document guard rejects another webview partition, child frame, closed guest and same-URL reload", () => {
-  type Args = Parameters<typeof roomStorageCaller>;
-  const frame = { url: "file:///test/room/index.html", detached: false };
-  const host = { isDestroyed: () => false, webContents: {} };
-  const partition = {};
-  let closed = false;
-  let navigation: ((e: { isMainFrame: boolean; isSameDocument: boolean }) => void) | undefined;
-  const guest = {
-    isDestroyed: () => closed,
-    getType: () => "webview",
-    session: partition,
-    hostWebContents: host.webContents,
-    mainFrame: frame,
-    on: (_: string, fn: typeof navigation) => {
-      navigation = fn;
-    },
-  };
-  const invoke = (senderFrame: object, expected: object) =>
-    roomStorageCaller(
-      { sender: guest, senderFrame } as unknown as Args[0],
-      () => host as unknown as ReturnType<Args[1]>,
-      expected as Args[2]
-    );
-  assert.throws(() => invoke(frame, {}), /Unauthorized/);
-  assert.throws(() => invoke({ ...frame }, partition), /Unauthorized/);
-  const old = invoke(frame, partition);
-  navigation!({ isMainFrame: true, isSameDocument: false });
-  assert.throws(old.assertCurrent, /Unauthorized/);
-  const current = invoke(frame, partition);
-  assert.notEqual(old.owner, current.owner);
-  closed = true;
-  assert.throws(current.assertCurrent, /Unauthorized/);
 });
 
 test("B8 USB picker bounds reads and refuses symlinks, center output and existing destinations", async (t) => {
@@ -820,4 +785,41 @@ test("B8 the first provisioning owner spans preflight and subsequent writes", as
   assert.equal(result, "done");
   const next = await openFieldAuthority(f.root);
   await next.close();
+});
+
+test("B83 native directory picker trailing slash works for first provisioning and rotation", async (t) => {
+  const f = await freshSetup(t);
+  f.dialogs.choose = async (kind) => (kind === "media" ? f.media + "/" : f.usbDir);
+  const endpoint = await temporaryEndpoint();
+  const provisioned = await f.run({ action: "provision", origin: endpoint.origin });
+  const rotated = await f.run({ action: "rotateServer", origin: endpoint.origin });
+  assert.match(provisioned.caFingerprint, /^[a-f0-9]{64}$/);
+  assert.notEqual(rotated.serverFingerprint, provisioned.serverFingerprint);
+});
+
+test("B83 trailing slash on native signing media and USB destination works for issuance", async (t) => {
+  const f = await setup(t);
+  const choose = f.dialogs.choose;
+  f.dialogs.choose = async (kind) => {
+    const path = await choose(kind);
+    return path && (kind === "media" || kind === "destination") ? path + "/" : path;
+  };
+  const reviewed = await f.run(f.renew);
+  const signed = await f.run({ action: "issue", reviewId: reviewed.reviewId });
+  assert.ok((await readFile(join(f.usbDir, signed.filename))).length > 0);
+});
+
+test("B83 native directory selection still rejects symlink and traversal aliases", async (t) => {
+  const f = await freshSetup(t);
+  const alias = join(f.usbDir, "media-alias");
+  await symlink(f.media, alias);
+  for (const path of [alias + "/", f.media + "/../" + f.media.split("/").at(-1) + "/"]) {
+    f.dialogs.choose = async () => path;
+    assert.deepEqual(await f.raw({ action: "provision", origin: "https://127.0.0.1:8443" }), {
+      ok: false,
+      code: "unavailable",
+    });
+    await absent(join(f.root, "field"));
+    await absent(join(f.root, ".field-provisioned"));
+  }
 });

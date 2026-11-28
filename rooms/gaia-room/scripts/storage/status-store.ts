@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { capabilityIds, sampleSchema } from "../../../../gaia-protocol/v1/src/schema.ts";
+import { capabilityIds, sampleSchema } from "../protocol/schema.ts";
 import { capabilityOf } from "../devices/capabilities.ts";
 import { physicalSnapshot, type PhysicalSnapshotInput } from "../devices/physical.ts";
 import {

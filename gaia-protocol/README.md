@@ -10,8 +10,8 @@ state, the status model, the Android app, or a general JSON/network framework.
 
 ```text
 gaia-protocol/v1/
-  src/schema.ts                 zod authority, types, generated-document builders
-  src/semantics.ts              reference cross-field and session-context checks
+  src/schema.ts                 public entry to the room-local Zod authority
+  src/semantics.ts              public entry to room-local semantic checks
   schema/*.schema.json          generated JSON Schema draft 2020-12 artifacts
   schema/capabilities.json      generated capability catalog
   fixtures/manifest.json        fixture index with layer and expectation
@@ -38,7 +38,7 @@ the `scripts` TypeScript project.
 
 ## Single authority
 
-`src/schema.ts` is the authority. The checked-in JSON Schema files are generated
+The single TypeScript implementation is in `rooms/gaia-room/scripts/protocol/schema.ts`. The public `gaia-protocol/v1/src/schema.ts` and `semantics.ts` entries re-export the room-local implementation; they do not maintain another schema or rule set. Gaia room sources import their own local modules, preserving the room source boundary. The checked-in JSON Schema files are generated
 with `z.toJSONSchema({ target: "draft-2020-12", io: "input" })` and must not be
 hand-edited. `capabilities.json` is generated from the same capability
 definitions. The test compares the parsed artifacts with the authority, so run

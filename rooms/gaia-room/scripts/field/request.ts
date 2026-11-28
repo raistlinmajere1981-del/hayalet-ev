@@ -1,9 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  bodyLimitBytes,
-  maxJsonDepth,
-  type ErrorCode,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+import { bodyLimitBytes, maxJsonDepth, type ErrorCode } from "../protocol/schema.ts";
 import { SessionError } from "./session.ts";
 
 const statuses = {

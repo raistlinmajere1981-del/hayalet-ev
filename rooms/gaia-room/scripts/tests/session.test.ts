@@ -9,7 +9,7 @@ import {
   intervalMs,
   timeoutMs,
   type CapabilityId,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+} from "../protocol/schema.ts";
 import type { PhysicalSnapshotInput } from "../devices/physical.ts";
 import type { DeviceStatus } from "../devices/status.ts";
 import { measuredFreshness } from "../devices/status.ts";

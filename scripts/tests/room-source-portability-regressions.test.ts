@@ -72,9 +72,7 @@ function isCoreAlias(specifier: string): boolean {
 
 function isRoomAlias(specifier: string): boolean {
   return (
-    specifier === "@rooms" ||
-    specifier.startsWith("@rooms/") ||
-    specifier.startsWith("rooms/")
+    specifier === "@rooms" || specifier.startsWith("@rooms/") || specifier.startsWith("rooms/")
   );
 }
 
@@ -137,6 +135,16 @@ void test("room source modules stay inside their own room boundary", async () =>
     [],
     `Room source boundary violations:\n${findings.map((finding) => `  - ${finding}`).join("\n")}`
   );
+});
+
+void test("Gaia and independent backup runtime use identical storage lock sources", async () => {
+  for (const file of ["gaia-storage-lock.mjs", "gaia-storage-lock.d.mts"]) {
+    assert.deepEqual(
+      await readFile(join(ROOMS_ROOT, "gaia-room", "scripts", "storage", file)),
+      await readFile(resolve("shared", file)),
+      `Lock contract drift: ${file}; run npm run gaia:sync-lock`
+    );
+  }
 });
 
 void test("core production modules do not import concrete room implementations", async () => {

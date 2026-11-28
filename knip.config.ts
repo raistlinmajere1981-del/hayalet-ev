@@ -57,6 +57,9 @@ const root = {
     "scripts/rooms/clean-generated-room-artifacts.ts",
     "scripts/rooms/report-room-paths.ts",
     "scripts/tests/gaia-room.electron-smoke.mjs",
+    "scripts/tests/gaia-field.electron-smoke.mjs",
+    "scripts/tests/gaia-field-electron-host.mjs",
+    "scripts/tests/gaia-field-management.electron-smoke.mjs",
     "scripts/tests/register-asset-loader.mjs",
     "scripts/tests/run-all-tests.mjs",
 

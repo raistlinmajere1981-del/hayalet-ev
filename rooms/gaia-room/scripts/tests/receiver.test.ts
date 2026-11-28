@@ -14,7 +14,7 @@ import {
   type ObservationPacket,
   type ErrorResponse,
   type Ack,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+} from "../protocol/schema.ts";
 import { projectCommand } from "../storage/provider.ts";
 import type { Opened } from "../editor/client.ts";
 import type { GaiaStatusReply } from "../devices/field-view.ts";

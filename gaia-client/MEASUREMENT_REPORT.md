@@ -1,17 +1,40 @@
+# B8/3 real pairing and visible telemetry
+
+28 November 2026 · Linux / isolated Electron workspace · SM-J701F, stock Android 9/API 28, ARM32. Real operator dialogs and Android document picker, actual application ID and Keystore, no Internet or Wi-Fi, USB reverse only.
+
+The center was provisioned through the actual Gaia UI, the phone CSR was reviewed, the signed USB installation was exported, a pending assignment was created, and the Client imported the package with the independently checked CA fingerprint. Native activation and Client Start resulted in a real mTLS session, matching ACK and a measured v3 row visible in Gaia's 2D device panel.
+
+| Capability                   | Observed value                               |
+| ---------------------------- | -------------------------------------------- |
+| Battery level                | 100%                                         |
+| Battery pack temperature     | 21.8 °C                                      |
+| Battery voltage              | 4312 mV                                      |
+| Battery charge state         | full                                         |
+| Accelerometer (first sample) | -0.0167594, 0.0239420, 9.7408094 m/s²        |
+| Proximity                    | far                                          |
+| Network                      | none, internetCapable=false, validated=false |
+| Wi-Fi RSSI                   | missing                                      |
+
+Battery data arrived after a new hardware broadcast, not from re-dating the initial sticky cache. The fifth packet stayed unchanged during USB reverse removal; central retirement occurred after the 35 s deadline. Restoring reverse produced a new session and ACK for sequence 2. The first interruption screenshot was still connected; a subsequent ordinary Stop/Start and Stop with the same device panel open demonstrated automatic disconnected/last-known presentation. Screenshots are evidence of states, not exact UI transition latency. Deliberate phone motion, near proximity, valid Wi-Fi RSSI, actual 3D graphics and long-duration field use were not exercised.
+
+Two real picker defects were corrected: trim only trailing POSIX separators on trusted native directory selection (still reject symlink/traversal), and use an openable any-MIME import chooser on Android while retaining bounded JSON and cryptographic checks. The APK was installed over the existing app; the pending Keystore key and installation identity survived. 121/121 JVM tests and APK build, 235/235 central Gaia, 11/11 protocol, targeted lint/TypeScript and format passed. Full repository check is pending.
+
+The synthetic center and phone assignment remain intentionally paired for later experiments. The app and service are stopped; the lab reverse mapping is removed. The private lab moved off tmpfs to persistent local storage outside the repo and real projects; the retained trust, server identity, active assignment and signed installation were revalidated after relocation. Real revocation of this test certificate was not performed; synthetic regression coverage is retained. No personal J700F changes. Resume with a correct clock and the same endpoint; do not clear the Client identity or recreate the CA. See the local lab's resume notes.
+
 # B7 Electron field receiver
 
 27 November 2026 · base `25da72a3` · Linux · Electron 43.3.0 · SM-J701F, Android 9 / API 28. Accepted within the targeted Linux/Electron scope; see independent closure below.
 
 The desktop test launched the built Hayalet Ev main and renderer from a temporary project tree. The ordinary main entry point resolved its own Gaia storage root. The fixture contained a fresh field CA, signing medium, server key and one approved synthetic phone. No Gaia Room was opened. [Desktop test](../scripts/tests/gaia-field.electron-smoke.mjs)
 
-| Scenario | Production receiver observation |
-| --- | --- |
-| T1 · Identity and capabilities | TLS 1.2 with ECDHE-ECDSA and AES-GCM opened a session. Unknown offers and capabilities removed from inventory or permission were absent from the response. Identity mismatches returned 403. Partial and unaccepted sample sets returned 400 before a sidecar was created. |
-| T2 · Values | The shared zero-value packet reached a v3 row with battery 0, vector zeros, `validated=false`, and distinct invalid and missing qualities. The canonical world bytes stayed identical. |
-| T3 · Trust and revocation | The receiver rejected a foreign CA and a missing client key/certificate. The client rejected a wrong SAN. A locally issued, inactive client received 403. Revocation after the handshake prevented replay on that socket. Renewal opened generation two and retired the old grant. |
-| T4 · ACK and ordering | The sender discarded the first response after publication. A byte-identical retry returned the original acceptance time and preserved the file inode. Changed bytes at the same sequence, gaps and old sequences produced conflicts. Repairing an unreadable sidecar allowed the failed sequence to be retried. |
-| T5 · Sample age | Seven subsequent packets reused the same accelerometer event across 70 seconds on the injected central clock. The persisted observation retained its first acceptance and age bound. A conflicting sample produced no write. |
-| T6 · Retirement and restart | The injected clock showed a live session at 34,999 ms and retirement at 35,000 ms. A new session awaiting its first packet suppressed the predecessor’s delayed offline write. Process restarts after a confirmed delivery and after a lost ACK required new sessions. A partially received request closed during quit. |
+| Scenario                       | Production receiver observation                                                                                                                                                                                                                                                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1 · Identity and capabilities | TLS 1.2 with ECDHE-ECDSA and AES-GCM opened a session. Unknown offers and capabilities removed from inventory or permission were absent from the response. Identity mismatches returned 403. Partial and unaccepted sample sets returned 400 before a sidecar was created.                                              |
+| T2 · Values                    | The shared zero-value packet reached a v3 row with battery 0, vector zeros, `validated=false`, and distinct invalid and missing qualities. The canonical world bytes stayed identical.                                                                                                                                  |
+| T3 · Trust and revocation      | The receiver rejected a foreign CA and a missing client key/certificate. The client rejected a wrong SAN. A locally issued, inactive client received 403. Revocation after the handshake prevented replay on that socket. Renewal opened generation two and retired the old grant.                                      |
+| T4 · ACK and ordering          | The sender discarded the first response after publication. A byte-identical retry returned the original acceptance time and preserved the file inode. Changed bytes at the same sequence, gaps and old sequences produced conflicts. Repairing an unreadable sidecar allowed the failed sequence to be retried.         |
+| T5 · Sample age                | Seven subsequent packets reused the same accelerometer event across 70 seconds on the injected central clock. The persisted observation retained its first acceptance and age bound. A conflicting sample produced no write.                                                                                            |
+| T6 · Retirement and restart    | The injected clock showed a live session at 34,999 ms and retirement at 35,000 ms. A new session awaiting its first packet suppressed the predecessor’s delayed offline write. Process restarts after a confirmed delivery and after a lost ACK required new sessions. A partially received request closed during quit. |
 
 The boundary tests used real loopback sockets. An 8,192-byte header and 16,384-byte body passed the size checks. One extra byte was rejected. Slow handshakes, headers and bodies closed at the phase deadline. The 17th concurrent connection was refused. The first three requests used the client burst and the next received 429 with an integer five-second wait. A writer held past the ten-second request budget retained one pending slot until release and published nothing. A second owner could acquire the center after drain. The Electron run also exercised application suspend/resume events and default-disabled startup. The power events were dispatched by the test harness. [Receiver regressions](../rooms/gaia-room/scripts/tests/receiver.test.ts)
 
@@ -23,11 +46,7 @@ The disposable application ID `com.hayaletev.gaiaclient.b7probe` isolated the te
 {
   "seq": 2,
   "acceptedAt": 1795794574120,
-  "value": [
-    -0.0035913025494664907,
-    -0.19393034279346466,
-    9.726444244384766
-  ],
+  "value": [-0.0035913025494664907, -0.19393034279346466, 9.726444244384766],
   "unit": "m/s²",
   "ageUpperMs": 10296
 }
@@ -37,11 +56,11 @@ The age bound includes the central wait since the previous response and the Clie
 
 Cleanup verified closure of the loopback port, restoration of the original reverse list, removal of the disposable packages and their pairing, and absence of a running Client service. All explicit device commands selected the J701F serial. In preliminary full-app runs the shell’s ordinary Capture discovery had access to host ADB, and ADB restarted during cleanup. Those runs cannot exclude a read-only discovery query to the attached J700F. The final harness isolates the Electron child from host executables and ADB path overrides; only the serial-scoped USB driver uses ADB. [Reproduction steps](README.md#b7-production-receiver-measurement)
 
-| Final check | Result |
-| --- | --- |
-| Central Gaia | 194 passed, including the 180 existing tests and 14 B7 regressions |
-| Shared v1 protocol | 11 passed |
-| Android JVM | 121 passed, zero failures, errors or skips |
+| Final check              | Result                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Central Gaia             | 194 passed, including the 180 existing tests and 14 B7 regressions                                                         |
+| Shared v1 protocol       | 11 passed                                                                                                                  |
+| Android JVM              | 121 passed, zero failures, errors or skips                                                                                 |
 | Builds and static checks | Electron main bundle, Android debug and instrumentation APKs, rooms TypeScript, targeted strict ESLint and Prettier passed |
 
 ## Independent B7 closure (Nexa)
@@ -62,13 +81,13 @@ by this targeted B7 check.
 
 27 November 2026 · base `d8ada18a` · independent acceptance pending.
 
-| Target | Result |
-| --- | --- |
-| Android JVM regressions | 118 passed, 0 failed, 0 errors, 0 skipped |
-| Central Gaia regressions | 180 passed |
-| Shared v1 protocol tests | 11 passed |
-| Android build | Debug application and instrumentation APKs built in a serial Gradle run |
-| Installable artifact | `app/build/outputs/apk/debug/app-debug.apk`, 12,866,938 bytes, SHA-256 `f03467c5324ab80788c2738aa3e8b6e11499811a5248ef1bfe3a2ab6cd733746` |
+| Target                   | Result                                                                                                                                    |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Android JVM regressions  | 118 passed, 0 failed, 0 errors, 0 skipped                                                                                                 |
+| Central Gaia regressions | 180 passed                                                                                                                                |
+| Shared v1 protocol tests | 11 passed                                                                                                                                 |
+| Android build            | Debug application and instrumentation APKs built in a serial Gradle run                                                                   |
+| Installable artifact     | `app/build/outputs/apk/debug/app-debug.apk`, 12,866,938 bytes, SHA-256 `f03467c5324ab80788c2738aa3e8b6e11499811a5248ef1bfe3a2ab6cd733746` |
 
 ## SM-J701F, Android 9 / API 28
 

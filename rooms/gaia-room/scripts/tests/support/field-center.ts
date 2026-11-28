@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
-import { capabilityIds } from "../../../../../gaia-protocol/v1/src/schema.ts";
+import { capabilityIds } from "../../protocol/schema.ts";
 import { inspectUsbRequest } from "../../field/installation.ts";
 import { createSiteFixture } from "../../spatial/fixture.ts";
 import { openFieldAuthority } from "../../storage/enrollment-service.ts";

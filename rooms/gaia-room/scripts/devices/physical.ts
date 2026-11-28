@@ -2,13 +2,13 @@ import {
   capabilityIds,
   observationPacketSchema,
   type ObservationPacket,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+} from "../protocol/schema.ts";
 import {
   duplicateCapabilities,
   missingCapabilityIds,
   samplesAfterSend,
   samplesOutsideAccepted,
-} from "../../../../gaia-protocol/v1/src/semantics.ts";
+} from "../protocol/semantics.ts";
 import type { Id, World } from "../spatial/world.ts";
 import {
   statusMatches,

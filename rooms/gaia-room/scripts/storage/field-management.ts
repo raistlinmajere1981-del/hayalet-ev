@@ -126,7 +126,9 @@ function nativePrompts(dialogs: FieldDialogs, check: () => void) {
     const path = await dialogs.choose(kind);
     check();
     if (!path) throw new FieldFailure("cancelled");
-    return path;
+    // Native directory pickers may append a POSIX separator. Strip only
+    // trailing separators, never resolve traversal or symlink aliases.
+    return kind === "media" || kind === "destination" ? path.replace(/\/+$/u, "") || "/" : path;
   };
   const confirm = async (operation: string, details: object) => {
     check();

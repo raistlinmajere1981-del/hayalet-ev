@@ -37,6 +37,7 @@ module.exports = {
           "rooms/\\.build/", // generated workspace room runtime artifacts
           "rooms/[^/]+/shared/vendor/", // vendored room runtime assets loaded outside the module graph
           "rooms/gaia-room/scripts/editor/(client\\.ts|shell-shims\\.mjs)$", // Svelte component import and upstream Vite alias
+          "rooms/gaia-room/scripts/field/management-contract\\.ts$", // type-only contract shared by main, storage and Svelte
           "rooms/game-room/ui/(context-runtime|game-room-ui-(bootstrap|runtime|state-message-runtime))\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
           "rooms/game-room/shared/ui/(feature-contract|scroll-runtime)\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html
           "rooms/game-room/main-functions/backgammon/ui/(backgammon-stage-runtime|module|render-runtime|state-runtime)\\.ts$", // classic scripts loaded by rooms/game-room/ui/index.html

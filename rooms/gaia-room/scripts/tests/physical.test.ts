@@ -4,11 +4,7 @@ import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
-import {
-  capabilityDefinitions,
-  capabilityIds,
-  type CapabilityId,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+import { capabilityDefinitions, capabilityIds, type CapabilityId } from "../protocol/schema.ts";
 import { physicalSnapshot, type PhysicalSessionContext } from "../devices/physical.ts";
 import {
   activeStatuses,

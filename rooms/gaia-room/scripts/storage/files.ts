@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, mkdir, open, realpath, rename, rm, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { acquireGaiaStorageLock } from "../../../../shared/gaia-storage-lock.mjs";
+import { acquireGaiaStorageLock } from "./gaia-storage-lock.mjs";
 import { dirname, join } from "node:path";
 
 export function hasCode(error: unknown, code: string): boolean {

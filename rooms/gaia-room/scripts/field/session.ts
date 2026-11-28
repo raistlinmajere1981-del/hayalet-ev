@@ -9,14 +9,14 @@ import {
   type CapabilityId,
   type ObservationPacket,
   type SessionOpenResponse,
-} from "../../../../gaia-protocol/v1/src/schema.ts";
+} from "../protocol/schema.ts";
 import {
   duplicateCapabilities,
   missingCapabilityIds,
   samplesAfterSend,
   samplesOutsideAccepted,
   t1Accepted,
-} from "../../../../gaia-protocol/v1/src/semantics.ts";
+} from "../protocol/semantics.ts";
 import type { PhysicalSessionContext, PhysicalSnapshotInput } from "../devices/physical.ts";
 import type { World } from "../spatial/world.ts";
 import type { PhysicalLiveProof } from "../storage/status-store.ts";
